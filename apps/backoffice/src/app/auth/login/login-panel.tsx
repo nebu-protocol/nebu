@@ -43,7 +43,7 @@ export function LoginPanel({ siteKey }: { siteKey: string | null }) {
 
       {error && <p className="text-destructive text-sm">{error}</p>}
 
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" size="lg" disabled={pending}>
         {pending ? "Memproses…" : "Masuk"}
       </Button>
 
