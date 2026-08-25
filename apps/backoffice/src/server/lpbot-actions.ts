@@ -2,13 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 
+import { requireAdmin } from "@/server/auth";
+
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 const DB_PATH = process.env.LPBOT_DB_PATH ?? resolve(process.cwd(), "../../data/lp.db");
 
-/** Kill switch bot LP: strategist berhenti mengambil keputusan baru saat paused. */
+/** Kill switch bot LP: strategist berhenti mengambil keputusan baru saat paused. ADMIN ONLY. */
 export async function toggleLpbotPause(): Promise<void> {
+  await requireAdmin();
   const db = new DatabaseSync(DB_PATH);
   try {
     db.exec("PRAGMA busy_timeout = 3000");

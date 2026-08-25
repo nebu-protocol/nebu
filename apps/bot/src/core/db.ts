@@ -45,12 +45,22 @@ CREATE TABLE IF NOT EXISTS pool_snapshots (
   PRIMARY KEY (pool_id, ts)
 );
 
+-- User login dashboard (multi-user + role). pass_hash = scrypt (lihat core/crypto.ts).
+-- role: 'admin' (boleh pause/kelola wallet) | 'viewer' (read-only).
+CREATE TABLE IF NOT EXISTS users (
+  username   TEXT PRIMARY KEY,
+  pass_hash  TEXT NOT NULL,
+  role       TEXT NOT NULL DEFAULT 'viewer',
+  created_at INTEGER NOT NULL
+);
+
 -- Wallet automation: ditulis backoffice (add/settings), dibaca executor bot.
 -- enc_pk = private key terenkripsi AES-256-GCM (lihat core/crypto.ts) — tidak pernah plaintext.
 CREATE TABLE IF NOT EXISTS wallets (
   address          TEXT PRIMARY KEY,
   name             TEXT NOT NULL,
   enc_pk           TEXT NOT NULL,
+  owner            TEXT,                      -- username pemilik (member); NULL = legacy/admin-only
   fund_eth         REAL NOT NULL DEFAULT 0,   -- total modal ETH yang boleh dipakai bot
   max_per_pool_eth REAL NOT NULL DEFAULT 0,   -- cap per pool
   automation       INTEGER NOT NULL DEFAULT 0,
@@ -143,6 +153,17 @@ export function openDb(path: string = DB_PATH): DatabaseSync {
   const db = new DatabaseSync(path)
   db.exec('PRAGMA journal_mode = WAL')
   db.exec(SCHEMA)
+  // migrasi kolom baru untuk DB lama (aman kalau kolom sudah ada)
+  for (const stmt of [
+    "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'viewer'",
+    'ALTER TABLE wallets ADD COLUMN owner TEXT',
+  ]) {
+    try {
+      db.exec(stmt)
+    } catch {
+      // kolom sudah ada — abaikan
+    }
+  }
   return db
 }
 

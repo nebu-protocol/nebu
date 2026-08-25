@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { decodeFunctionData, parseAbi } from 'viem'
-import { encryptSecret, decryptSecret } from '../src/core/crypto.ts'
+import { encryptSecret, decryptSecret, hashPassword, verifyPassword } from '../src/core/crypto.ts'
 import { planEntries, encodeV4SwapEthIn } from '../src/modules/executor/executor.ts'
 import { ADDRESSES, NATIVE } from '../src/config/index.ts'
 
@@ -22,6 +22,16 @@ test('crypto: dua enkripsi payload sama menghasilkan ciphertext beda (IV acak)',
   const b = encryptSecret('0xabc', 's')
   assert.notEqual(a, b)
   assert.equal(decryptSecret(a, 's'), decryptSecret(b, 's'))
+})
+
+test('password: hash bukan plaintext, verify benar/salah, salt acak', () => {
+  const h = hashPassword('rahasia123')
+  assert.ok(h.startsWith('s1:'))
+  assert.ok(!h.includes('rahasia123'), 'hash mengandung plaintext!')
+  assert.equal(verifyPassword('rahasia123', h), true)
+  assert.equal(verifyPassword('salah', h), false)
+  assert.notEqual(hashPassword('rahasia123'), h) // salt acak -> hash beda
+  assert.equal(verifyPassword('x', 'format-rusak'), false)
 })
 
 test('planEntries: cap fund_eth x fraction dan max_per_pool_eth', () => {

@@ -10,6 +10,7 @@ const commands: Record<string, () => Promise<{ run: (args: string[]) => Promise<
   pnl: () => import('./modules/report/pnl.ts'),
   plan: () => import('./modules/strategy/plan.ts'),
   execute: () => import('./modules/executor/executor.ts'),
+  user: () => import('./modules/auth/users.ts'),
 }
 
 const [cmd, ...args] = process.argv.slice(2)

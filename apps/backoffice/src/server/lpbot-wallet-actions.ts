@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { privateKeyToAccount } from "viem/accounts";
 
+import { canEditWallet, requireMember, type Session } from "@/server/auth";
 import { encryptSecret, getKeySecret } from "@/server/lpbot-crypto";
 
 import { randomBytes } from "node:crypto";
@@ -22,13 +23,24 @@ function withDb<T>(fn: (db: DatabaseSync) => T): T {
   }
 }
 
+/** Pastikan sesi boleh mengubah wallet ini: admin bebas, member hanya miliknya. */
+function assertCanEdit(db: DatabaseSync, address: string, session: Session) {
+  const row = db.prepare("SELECT owner FROM wallets WHERE address = ?").get(address) as
+    | { owner: string | null }
+    | undefined;
+  if (!row) throw new Error("Wallet tidak ditemukan.");
+  if (!canEditWallet(session.role, session.username, row.owner)) throw new Error("Bukan wallet milikmu.");
+}
+
 /**
  * Tambah wallet: paste private key, atau kosongkan untuk generate baru.
  * Key langsung dienkripsi (AES-256-GCM) — plaintext tidak pernah disimpan/di-log.
+ * Member+admin saja; wallet dimiliki oleh pembuatnya.
  */
 export async function addLpbotWallet(formData: FormData): Promise<void> {
+  const session = await requireMember();
   const secret = getKeySecret();
-  if (!secret) throw new Error("Set LPBOT_KEY_SECRET di .env root dulu (string acak panjang).");
+  if (!secret) throw new Error("Set LPBOT_KEY_SECRET di .env server dulu.");
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) throw new Error("Nama wallet wajib diisi.");
@@ -44,16 +56,17 @@ export async function addLpbotWallet(formData: FormData): Promise<void> {
   withDb((db) =>
     db
       .prepare(
-        `INSERT INTO wallets (address, name, enc_pk, fund_eth, max_per_pool_eth, automation, autoswap, created_at)
-         VALUES (?, ?, ?, 0, 0, 0, 0, ?)`,
+        `INSERT INTO wallets (address, name, enc_pk, owner, fund_eth, max_per_pool_eth, automation, autoswap, created_at)
+         VALUES (?, ?, ?, ?, 0, 0, 0, 0, ?)`,
       )
-      .run(address, name, encPk, Math.floor(Date.now() / 1000)),
+      .run(address, name, encPk, session.username, Math.floor(Date.now() / 1000)),
   );
   revalidatePath("/dashboard/lpbot");
 }
 
-/** Update fund cap + toggle automation/autoswap satu wallet. */
+/** Update fund cap + toggle automation/autoswap. Admin bebas; member hanya wallet miliknya. */
 export async function updateLpbotWallet(formData: FormData): Promise<void> {
+  const session = await requireMember();
   const address = String(formData.get("address") ?? "").toLowerCase();
   const fundEth = Number(formData.get("fundEth") ?? 0);
   const maxPerPoolEth = Number(formData.get("maxPerPoolEth") ?? 0);
@@ -62,18 +75,23 @@ export async function updateLpbotWallet(formData: FormData): Promise<void> {
   if (!address || !Number.isFinite(fundEth) || !Number.isFinite(maxPerPoolEth) || fundEth < 0 || maxPerPoolEth < 0)
     throw new Error("Input tidak valid.");
 
-  withDb((db) =>
-    db
-      .prepare("UPDATE wallets SET fund_eth = ?, max_per_pool_eth = ?, automation = ?, autoswap = ? WHERE address = ?")
-      .run(fundEth, maxPerPoolEth, automation, autoswap, address),
-  );
+  withDb((db) => {
+    assertCanEdit(db, address, session);
+    db.prepare(
+      "UPDATE wallets SET fund_eth = ?, max_per_pool_eth = ?, automation = ?, autoswap = ? WHERE address = ?",
+    ).run(fundEth, maxPerPoolEth, automation, autoswap, address);
+  });
   revalidatePath("/dashboard/lpbot");
 }
 
-/** Hapus wallet dari DB. Key ikut terhapus — pastikan sudah dibackup di tempat lain. */
+/** Hapus wallet. Admin bebas; member hanya wallet miliknya. */
 export async function deleteLpbotWallet(formData: FormData): Promise<void> {
+  const session = await requireMember();
   const address = String(formData.get("address") ?? "").toLowerCase();
   if (!address) throw new Error("Alamat kosong.");
-  withDb((db) => db.prepare("DELETE FROM wallets WHERE address = ?").run(address));
+  withDb((db) => {
+    assertCanEdit(db, address, session);
+    db.prepare("DELETE FROM wallets WHERE address = ?").run(address);
+  });
   revalidatePath("/dashboard/lpbot");
 }

@@ -39,9 +39,10 @@ type Props = {
   yields: LpYieldRow[];
   wallets: LpWallet[];
   executions: LpExecution[];
+  canManageWallets: boolean;
 };
 
-export function LpbotTabs({ decisions, pnl, yields, wallets, executions }: Props) {
+export function LpbotTabs({ decisions, pnl, yields, wallets, executions, canManageWallets }: Props) {
   const activeWallets = wallets.filter((w) => w.automation === 1).length;
 
   return (
@@ -56,10 +57,12 @@ export function LpbotTabs({ decisions, pnl, yields, wallets, executions }: Props
             {yields.length}
           </Badge>
         </TabsTrigger>
-        <TabsTrigger value="wallets">
-          <KeyRound data-icon="inline-start" /> Wallets
-          {activeWallets > 0 && <Badge className="ml-1">{activeWallets}</Badge>}
-        </TabsTrigger>
+        {canManageWallets && (
+          <TabsTrigger value="wallets">
+            <KeyRound data-icon="inline-start" /> Wallets
+            {activeWallets > 0 && <Badge className="ml-1">{activeWallets}</Badge>}
+          </TabsTrigger>
+        )}
         <TabsTrigger value="activity">
           <Activity data-icon="inline-start" /> Activity
         </TabsTrigger>
@@ -204,9 +207,11 @@ export function LpbotTabs({ decisions, pnl, yields, wallets, executions }: Props
       </TabsContent>
 
       {/* WALLETS */}
-      <TabsContent value="wallets">
-        <WalletsCard wallets={wallets} />
-      </TabsContent>
+      {canManageWallets && (
+        <TabsContent value="wallets">
+          <WalletsCard wallets={wallets} />
+        </TabsContent>
+      )}
 
       {/* ACTIVITY */}
       <TabsContent value="activity">

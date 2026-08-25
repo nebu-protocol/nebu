@@ -8,6 +8,7 @@
     "activity": "tsx src/index.ts activity",
     "collect": "tsx --env-file-if-exists=../../.env src/index.ts collect",
     "execute": "tsx --env-file-if-exists=../../.env src/index.ts execute",
+    "user": "tsx --env-file-if-exists=../../.env src/index.ts user",
     "rank": "tsx src/index.ts rank",
     "yield": "tsx src/index.ts yield",
     "pnl": "tsx src/index.ts pnl",

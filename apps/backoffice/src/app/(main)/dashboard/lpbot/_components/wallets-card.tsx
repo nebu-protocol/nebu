@@ -85,7 +85,10 @@ export function WalletsCard({ wallets }: { wallets: LpWallet[] }) {
               {wallets.map((w) => (
                 <TableRow key={w.address}>
                   <TableCell className="align-top">
-                    <div className="font-medium">{w.name}</div>
+                    <div className="font-medium">
+                      {w.name}
+                      {w.owner && <span className="text-muted-foreground ml-1 text-xs">· {w.owner}</span>}
+                    </div>
                     <div className="font-mono text-muted-foreground text-xs">
                       {w.address.slice(0, 10)}…{w.address.slice(-6)}
                     </div>

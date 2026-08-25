@@ -1,11 +1,13 @@
 import Image from "next/image";
 
 import { formatDistanceToNow } from "date-fns";
-import { Pause, Play } from "lucide-react";
+import { LogOut, Pause, Play } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getSession } from "@/server/auth";
+import { logoutAction } from "@/server/auth-actions";
 import { getLpbotExecutions, getLpbotPnl, getLpbotSummary, getLpbotWallets, type LpbotSummary } from "@/server/lpbot";
 import { toggleLpbotPause } from "@/server/lpbot-actions";
 
@@ -13,7 +15,11 @@ import { LpbotTabs } from "./_components/lpbot-tabs";
 
 export const dynamic = "force-dynamic";
 
-export default function Page() {
+export default async function Page() {
+  const session = await getSession();
+  const currentUser = session?.username ?? null;
+  const role = session?.role ?? "viewer";
+  const isAdmin = role === "admin";
   let summary: LpbotSummary | null = null;
   let loadError: string | null = null;
   try {
@@ -36,7 +42,7 @@ export default function Page() {
   }
 
   const { stats, yields, decisions } = summary;
-  const wallets = getLpbotWallets();
+  const wallets = getLpbotWallets({ role, username: currentUser ?? "" });
   const executions = getLpbotExecutions();
   const pnl = getLpbotPnl();
   const avgNet = pnl.length ? pnl.reduce((s, p) => s + p.net_pct, 0) / pnl.length : null;
@@ -60,12 +66,26 @@ export default function Page() {
               : "belum ada data"}
           </p>
         </div>
-        <form action={toggleLpbotPause}>
-          <Button variant={stats.paused ? "default" : "destructive"}>
-            {stats.paused ? <Play /> : <Pause />}
-            {stats.paused ? "Resume Bot" : "Pause Bot"}
-          </Button>
-        </form>
+        <div className="flex items-center gap-2">
+          {currentUser && (
+            <span className="text-muted-foreground hidden text-sm sm:inline">
+              {currentUser} · {role}
+            </span>
+          )}
+          {isAdmin && (
+            <form action={toggleLpbotPause}>
+              <Button variant={stats.paused ? "default" : "destructive"}>
+                {stats.paused ? <Play /> : <Pause />}
+                {stats.paused ? "Resume Bot" : "Pause Bot"}
+              </Button>
+            </form>
+          )}
+          <form action={logoutAction}>
+            <Button variant="outline" size="icon" title="Logout">
+              <LogOut />
+            </Button>
+          </form>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -84,7 +104,14 @@ export default function Page() {
         />
       </div>
 
-      <LpbotTabs decisions={decisions} pnl={pnl} yields={yields} wallets={wallets} executions={executions} />
+      <LpbotTabs
+        decisions={decisions}
+        pnl={pnl}
+        yields={yields}
+        wallets={wallets}
+        executions={executions}
+        canManageWallets={role !== "viewer"}
+      />
     </div>
   );
 }

@@ -1,4 +1,10 @@
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto'
+import {
+  createCipheriv,
+  createDecipheriv,
+  randomBytes,
+  scryptSync,
+  timingSafeEqual,
+} from 'node:crypto'
 
 /**
  * Enkripsi private key at-rest: AES-256-GCM, key diturunkan scrypt dari
@@ -25,4 +31,21 @@ export function decryptSecret(payload: string, secret: string): string {
   return Buffer.concat([decipher.update(Buffer.from(ctB, 'base64')), decipher.final()]).toString(
     'utf8',
   )
+}
+
+/**
+ * Hash password login (scrypt). Format: s1:<saltHex>:<hashHex>.
+ * Dipakai bot (buat user) & backoffice (verifikasi login) — jaga format sinkron.
+ */
+export function hashPassword(pw: string): string {
+  const salt = randomBytes(16)
+  return `s1:${salt.toString('hex')}:${scryptSync(pw, salt, 32).toString('hex')}`
+}
+
+export function verifyPassword(pw: string, stored: string): boolean {
+  const [v, saltHex, hashHex] = stored.split(':')
+  if (v !== 's1' || !saltHex || !hashHex) return false
+  const expected = Buffer.from(hashHex, 'hex')
+  const actual = scryptSync(pw, Buffer.from(saltHex, 'hex'), 32)
+  return expected.length === actual.length && timingSafeEqual(expected, actual)
 }

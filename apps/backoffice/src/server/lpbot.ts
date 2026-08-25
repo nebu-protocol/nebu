@@ -48,6 +48,7 @@ export type LpbotSummary = {
 export type LpWallet = {
   address: string;
   name: string;
+  owner: string | null;
   fund_eth: number;
   max_per_pool_eth: number;
   automation: number;
@@ -67,13 +68,15 @@ export type LpExecution = {
   detail: string | null;
 };
 
-export function getLpbotWallets(): LpWallet[] {
+/** Admin: semua wallet. Member: hanya miliknya. Viewer: kosong (tak boleh lihat key-bearing rows). */
+export function getLpbotWallets(opts: { role: string; username: string }): LpWallet[] {
+  if (opts.role === "viewer") return [];
+  const cols = "address, name, owner, fund_eth, max_per_pool_eth, automation, autoswap, created_at";
+  if (opts.role === "admin") {
+    return plain(getDb().prepare(`SELECT ${cols} FROM wallets ORDER BY created_at`).all() as LpWallet[]);
+  }
   return plain(
-    getDb()
-      .prepare(
-        "SELECT address, name, fund_eth, max_per_pool_eth, automation, autoswap, created_at FROM wallets ORDER BY created_at",
-      )
-      .all() as LpWallet[],
+    getDb().prepare(`SELECT ${cols} FROM wallets WHERE owner = ? ORDER BY created_at`).all(opts.username) as LpWallet[],
   );
 }
 
@@ -118,9 +121,7 @@ const plain = <T>(rows: T[]): T[] => rows.map((r) => ({ ...r }));
 export function getLpbotSummary(topN = 25): LpbotSummary {
   const d = getDb();
   const yields = plain(
-    d
-      .prepare("SELECT * FROM yield_rows WHERE passes_guards = 1 ORDER BY apr20 DESC LIMIT ?")
-      .all(topN) as LpYieldRow[],
+    d.prepare("SELECT * FROM yield_rows WHERE passes_guards = 1 ORDER BY apr20 DESC LIMIT ?").all(topN) as LpYieldRow[],
   );
   const decisions = plain(
     d
