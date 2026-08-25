@@ -14,7 +14,15 @@ import {
  * Chart portfolio LP: seri {timestamp,value} (mis. ETH/USD dari snapshot on-chain),
  * dengan tab rentang. Logic chart di sini (client); data dibaca server dari lp.db.
  */
-export function PortfolioChart({ points, label }: { points: HistoryPoint[]; label: string }) {
+export function PortfolioChart({
+  points,
+  label,
+  unit = "%",
+}: {
+  points: HistoryPoint[];
+  label: string;
+  unit?: "%" | "$";
+}) {
   const [range, setRange] = useState<ChartRange>("ALL");
 
   const filtered = useMemo(() => {
@@ -40,11 +48,20 @@ export function PortfolioChart({ points, label }: { points: HistoryPoint[]; labe
         <RangeTabs value={range} onChange={setRange} />
       </div>
       {filtered.length < 2 ? (
-        <div className="flex h-[220px] items-center justify-center text-sm text-soft">
+        <div className="flex h-[180px] items-center justify-center text-sm text-soft">
           Belum cukup data — collector sedang mengumpulkan time-series.
         </div>
       ) : (
-        <PriceChart points={filtered} trend={trend} range={range} plain />
+        <PriceChart
+          points={filtered}
+          trend={trend}
+          range={range}
+          plain
+          height={220}
+          format={(v) =>
+            unit === "%" ? `${v >= 0 ? "+" : ""}${v.toFixed(1)}%` : `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+          }
+        />
       )}
     </div>
   );

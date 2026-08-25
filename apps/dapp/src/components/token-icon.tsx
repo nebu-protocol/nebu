@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 const KNOWN = new Set(["eth", "weth", "usdc", "usdt", "wbtc"]);
 
 function hash(s: string): number {
@@ -10,8 +14,9 @@ function hash(s: string): number {
 }
 
 /**
- * Logo token: pakai logo asli (iconUrl dari Blockscout) kalau ada, lalu logo
- * lokal token utama, terakhir ikon generatif (kalau token benar-benar tanpa logo).
+ * Logo token: coba logo asli (iconUrl Blockscout) lalu logo lokal token utama.
+ * Kalau gambar gagal dimuat (URL rusak/404), jatuh ke ikon generatif — jadi
+ * tidak pernah menampilkan gambar rusak.
  */
 export function TokenIcon({
   symbol,
@@ -24,12 +29,23 @@ export function TokenIcon({
 }) {
   const s = symbol.toLowerCase();
   const src = iconUrl ?? (KNOWN.has(s) ? `/tokens/${s === "weth" ? "eth" : s}.png` : null);
-  if (src) {
-    // biome-ignore lint/performance/noImgElement: remote/static token logo, tiny, no optimization
+  const [failed, setFailed] = useState(false);
+
+  if (src && !failed) {
+    // biome-ignore lint/performance/noImgElement: remote/static token logo, tiny
     return (
-      <img src={src} alt={symbol} width={size} height={size} className="shrink-0 rounded-full object-cover" />
+      <img
+        src={src}
+        alt={symbol}
+        width={size}
+        height={size}
+        onError={() => setFailed(true)}
+        className="shrink-0 rounded-full bg-shade object-cover"
+        style={{ width: size, height: size }}
+      />
     );
   }
+
   const hue = hash(s) % 360;
   const initial = symbol.replace(/[^a-zA-Z0-9]/g, "").slice(0, 1).toUpperCase() || "?";
   return (

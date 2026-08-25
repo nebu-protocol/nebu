@@ -55,7 +55,6 @@ export function RangeTabs({
   );
 }
 
-const HEIGHT = 380;
 const FLAT_PAD = 0.06; // domain padding so a flat series centers with ticks
 const PX_PER_X_LABEL = 110;
 const TOOLTIP_HALF_WIDTH = 70;
@@ -100,6 +99,8 @@ export function PriceChart({
   range,
   axis = "right",
   plain = false,
+  height = 380,
+  format,
 }: Readonly<{
   points: HistoryPoint[];
   trend: Trend;
@@ -108,7 +109,13 @@ export function PriceChart({
   axis?: "left" | "right";
   /** White background instead of the trend tint (portfolio style). */
   plain?: boolean;
+  /** Tinggi chart (px). */
+  height?: number;
+  /** Format nilai sumbu & tooltip (default USD). Mis. persen: (v)=>`${v.toFixed(2)}%`. */
+  format?: (v: number) => string;
 }>) {
+  const fmt = format ?? tickLabel;
+  const HEIGHT = height;
   const id = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -204,7 +211,7 @@ export function PriceChart({
                   fill="#83878b"
                   className="tabular"
                 >
-                  {tickLabel(t)}
+                  {fmt(t)}
                 </text>
               </g>
             );
@@ -275,7 +282,7 @@ export function PriceChart({
             left: Math.max(TOOLTIP_HALF_WIDTH, Math.min(width - TOOLTIP_HALF_WIDTH, pts[h].x)),
           }}
         >
-          <div className="tabular text-sm font-medium">${fmtPrice(data[h].value)}</div>
+          <div className="tabular text-sm font-medium">{fmt(data[h].value)}</div>
           <div className="text-[11px] whitespace-nowrap text-soft">
             {tooltipLabel(data[h].timestamp, range)}
           </div>
