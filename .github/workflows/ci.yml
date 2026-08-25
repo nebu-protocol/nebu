@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  bot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install (bot workspace)
+        run: npm ci || npm install
+      - name: Typecheck bot
+        run: npx tsc -p apps/bot --noEmit
+      - name: Test bot
+        run: npm test -w @lp/bot
+
+  backoffice:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install (backoffice)
+        working-directory: apps/backoffice
+        run: npm ci || npm install
+      - name: Typecheck + lint
+        working-directory: apps/backoffice
+        run: |
+          npx tsc --noEmit
+          npx @biomejs/biome check src
+      - name: Build
+        working-directory: apps/backoffice
+        run: npx next build

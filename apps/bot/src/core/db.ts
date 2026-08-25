@@ -1,0 +1,160 @@
+import { DatabaseSync } from 'node:sqlite'
+import { mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+// repo root = apps/bot/src/core -> up 4
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..')
+const DB_PATH = process.env.DB_PATH ?? resolve(repoRoot, 'data/lp.db')
+
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pools (
+  pool_id       TEXT PRIMARY KEY,          -- bytes32 v4 PoolId
+  currency0     TEXT NOT NULL,
+  currency1     TEXT NOT NULL,
+  fee           INTEGER NOT NULL,          -- 0x800000 flag = dynamic fee (hook-controlled)
+  tick_spacing  INTEGER NOT NULL,
+  hooks         TEXT NOT NULL,
+  block_number  INTEGER NOT NULL,
+  created_at    INTEGER,                   -- unix seconds (block timestamp)
+  tx_hash       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_pools_created ON pools (created_at);
+
+CREATE TABLE IF NOT EXISTS tokens (
+  address  TEXT PRIMARY KEY,
+  symbol   TEXT,
+  name     TEXT,
+  decimals INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS pool_snapshots (
+  pool_id         TEXT NOT NULL,
+  ts              INTEGER NOT NULL,        -- unix seconds
+  sqrt_price_x96  TEXT NOT NULL,
+  tick            INTEGER NOT NULL,
+  lp_fee          INTEGER NOT NULL,
+  liquidity       TEXT NOT NULL,
+  fee_growth0     TEXT NOT NULL,
+  fee_growth1     TEXT NOT NULL,
+  PRIMARY KEY (pool_id, ts)
+);
+
+-- Wallet automation: ditulis backoffice (add/settings), dibaca executor bot.
+-- enc_pk = private key terenkripsi AES-256-GCM (lihat core/crypto.ts) — tidak pernah plaintext.
+CREATE TABLE IF NOT EXISTS wallets (
+  address          TEXT PRIMARY KEY,
+  name             TEXT NOT NULL,
+  enc_pk           TEXT NOT NULL,
+  fund_eth         REAL NOT NULL DEFAULT 0,   -- total modal ETH yang boleh dipakai bot
+  max_per_pool_eth REAL NOT NULL DEFAULT 0,   -- cap per pool
+  automation       INTEGER NOT NULL DEFAULT 0,
+  autoswap         INTEGER NOT NULL DEFAULT 0,
+  created_at       INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS executions (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts         INTEGER NOT NULL,
+  wallet     TEXT NOT NULL,
+  pool_id    TEXT NOT NULL,
+  kind       TEXT NOT NULL,                   -- SWAP_IN | MINT | ...
+  amount_eth REAL,
+  tx_hash    TEXT,
+  status     TEXT NOT NULL,                   -- DRY_RUN | SIMULATED | SENT | CONFIRMED | FAILED
+  detail     TEXT
+);
+
+-- Posisi LP (simulasi/live): satu baris per MINT, ditutup saat EXIT.
+-- token_id null di simulasi (belum ada NFT); terisi setelah mint live.
+CREATE TABLE IF NOT EXISTS positions (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  wallet      TEXT NOT NULL,
+  pool_id     TEXT NOT NULL,
+  token_id    TEXT,
+  tick_lower  INTEGER NOT NULL,
+  tick_upper  INTEGER NOT NULL,
+  liquidity   TEXT NOT NULL,
+  entry_ts    INTEGER NOT NULL,
+  exit_ts     INTEGER,
+  status      TEXT NOT NULL DEFAULT 'OPEN'      -- OPEN | CLOSED
+);
+CREATE INDEX IF NOT EXISTS idx_positions_open ON positions (wallet, pool_id, status);
+
+-- PnL posisi (simulasi) vs HODL — dibaca backoffice
+CREATE TABLE IF NOT EXISTS positions_pnl (
+  pool_id          TEXT PRIMARY KEY,
+  pair             TEXT NOT NULL,
+  entry_ts         INTEGER NOT NULL,
+  holding_days     REAL NOT NULL,
+  price_change_pct REAL NOT NULL,
+  fees_pct         REAL NOT NULL,
+  il_pct           REAL NOT NULL,
+  net_pct          REAL NOT NULL,
+  computed_at      INTEGER NOT NULL
+);
+
+-- Materialisasi report yield terakhir — kontrak baca untuk backoffice (SELECT saja)
+CREATE TABLE IF NOT EXISTS yield_rows (
+  pool_id         TEXT PRIMARY KEY,
+  pair            TEXT NOT NULL,
+  age_days        REAL,
+  apr20           REAL NOT NULL,
+  apr5            REAL NOT NULL,
+  fee_per_eth_day REAL NOT NULL,
+  vol_eth         REAL,
+  swaps_per_h     REAL NOT NULL,
+  hook            TEXT NOT NULL,
+  span_min        REAL NOT NULL,
+  passes_guards   INTEGER NOT NULL,
+  computed_at     INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS decisions (
+  ts            INTEGER NOT NULL,
+  pool_id       TEXT NOT NULL,
+  action        TEXT NOT NULL,             -- ENTER | HOLD | EXIT
+  width_factor  REAL NOT NULL,
+  size_fraction REAL NOT NULL,
+  reason        TEXT,
+  PRIMARY KEY (ts, pool_id)
+);
+
+CREATE TABLE IF NOT EXISTS swap_windows (
+  pool_id      TEXT NOT NULL,
+  from_block   INTEGER NOT NULL,
+  to_block     INTEGER NOT NULL,
+  from_ts      INTEGER NOT NULL,
+  to_ts        INTEGER NOT NULL,
+  swap_count   INTEGER NOT NULL,
+  volume0      TEXT NOT NULL,              -- sum(abs(amount0)), raw units
+  volume1      TEXT NOT NULL,
+  PRIMARY KEY (pool_id, from_block, to_block)
+);
+`
+
+export function openDb(path: string = DB_PATH): DatabaseSync {
+  mkdirSync(dirname(path), { recursive: true })
+  const db = new DatabaseSync(path)
+  db.exec('PRAGMA journal_mode = WAL')
+  db.exec(SCHEMA)
+  return db
+}
+
+export function getMeta(db: DatabaseSync, key: string): string | undefined {
+  const row = db.prepare('SELECT value FROM meta WHERE key = ?').get(key) as
+    | { value: string }
+    | undefined
+  return row?.value
+}
+
+export function setMeta(db: DatabaseSync, key: string, value: string) {
+  db.prepare(
+    'INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+  ).run(key, value)
+}

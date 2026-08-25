@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd job: jalankan collector 1 siklus tiap 3600 detik (1 jam).
+  Pasang:
+    cp apps/bot/scripts/com.lpbot.collector.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.lpbot.collector.plist
+  Cek:   launchctl list | grep lpbot
+  Lepas: launchctl unload ~/Library/LaunchAgents/com.lpbot.collector.plist
+  Tahan reboot & crash — pengganti background task sesi yang ephemeral.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.lpbot.collector</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/koalaterbang/scraper/sniper/apps/bot/scripts/collect-once.sh</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>3600</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardErrorPath</key>
+  <string>/Users/koalaterbang/scraper/sniper/data/collect.err.log</string>
+</dict>
+</plist>

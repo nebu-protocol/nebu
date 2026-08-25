@@ -1,0 +1,28 @@
+{
+  "name": "@lp/bot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "backfill": "tsx src/index.ts backfill",
+    "snapshot": "tsx src/index.ts snapshot",
+    "activity": "tsx src/index.ts activity",
+    "collect": "tsx --env-file-if-exists=../../.env src/index.ts collect",
+    "execute": "tsx --env-file-if-exists=../../.env src/index.ts execute",
+    "rank": "tsx src/index.ts rank",
+    "yield": "tsx src/index.ts yield",
+    "pnl": "tsx src/index.ts pnl",
+    "plan": "tsx src/index.ts plan",
+    "test": "tsx --test test/*.test.ts",
+    "test:live": "tsx test/live.smoke.ts",
+    "test:stress": "tsx test/stress.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,66 @@
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import { decodeFunctionData, parseAbi } from 'viem'
+import { encryptSecret, decryptSecret } from '../src/core/crypto.ts'
+import { planEntries, encodeV4SwapEthIn } from '../src/modules/executor/executor.ts'
+import { ADDRESSES, NATIVE } from '../src/config/index.ts'
+
+test('crypto: roundtrip encrypt/decrypt, dan payload dimanipulasi -> gagal', () => {
+  const pk = '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d'
+  const enc = encryptSecret(pk, 'rahasia-kuat')
+  assert.notEqual(enc, pk)
+  assert.ok(enc.startsWith('v1:'))
+  assert.equal(decryptSecret(enc, 'rahasia-kuat'), pk)
+  assert.throws(() => decryptSecret(enc, 'secret-salah')) // GCM auth gagal
+  const parts = enc.split(':')
+  const tampered = `v1:${parts[1]}:${parts[2]}:${Buffer.from('deadbeef').toString('base64')}`
+  assert.throws(() => decryptSecret(tampered, 'rahasia-kuat'))
+})
+
+test('crypto: dua enkripsi payload sama menghasilkan ciphertext beda (IV acak)', () => {
+  const a = encryptSecret('0xabc', 's')
+  const b = encryptSecret('0xabc', 's')
+  assert.notEqual(a, b)
+  assert.equal(decryptSecret(a, 's'), decryptSecret(b, 's'))
+})
+
+test('planEntries: cap fund_eth x fraction dan max_per_pool_eth', () => {
+  const enters = [
+    { poolId: '0xa', sizeFraction: 0.33 },
+    { poolId: '0xb', sizeFraction: 0.33 },
+  ]
+  const plans = planEntries(enters, { fund_eth: 3, max_per_pool_eth: 0.5, autoswap: 1 })
+  // 3 * 0.33 = 0.99 -> dibatasi max_per_pool 0.5; separuh untuk swap
+  assert.equal(plans.length, 2)
+  assert.equal(plans[0]!.totalEth, 0.5)
+  assert.equal(plans[0]!.swapEth, 0.25)
+})
+
+test('planEntries: autoswap off -> swapEth 0; fund 0 -> tidak ada plan', () => {
+  const enters = [{ poolId: '0xa', sizeFraction: 0.5 }]
+  assert.equal(planEntries(enters, { fund_eth: 1, max_per_pool_eth: 1, autoswap: 0 })[0]!.swapEth, 0)
+  assert.equal(planEntries(enters, { fund_eth: 0, max_per_pool_eth: 1, autoswap: 1 }).length, 0)
+})
+
+test('encodeV4SwapEthIn: calldata valid untuk Universal Router execute', () => {
+  const pool = {
+    currency0: NATIVE,
+    currency1: '0x1111111111111111111111111111111111111111',
+    fee: 3000,
+    tick_spacing: 60,
+    hooks: NATIVE,
+  }
+  const tx = encodeV4SwapEthIn(pool, 10n ** 17n, 42n, 1_800_000_000n)
+  assert.equal(tx.to, ADDRESSES.universalRouter)
+  assert.equal(tx.value, 10n ** 17n) // ETH native ikut sebagai msg.value
+  const decoded = decodeFunctionData({
+    abi: parseAbi(['function execute(bytes commands, bytes[] inputs, uint256 deadline) payable']),
+    data: tx.data,
+  })
+  assert.equal(decoded.functionName, 'execute')
+  assert.equal(decoded.args[0], '0x10') // V4_SWAP
+  assert.equal((decoded.args[1] as string[]).length, 1)
+  assert.equal(decoded.args[2], 1_800_000_000n)
+  // deterministik: input sama -> calldata sama
+  assert.deepEqual(tx, encodeV4SwapEthIn(pool, 10n ** 17n, 42n, 1_800_000_000n))
+})

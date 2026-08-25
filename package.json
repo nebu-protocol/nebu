@@ -1,0 +1,20 @@
+{
+  "name": "lp",
+  "private": true,
+  "workspaces": [
+    "apps/bot",
+    "packages/*"
+  ],
+  "scripts": {
+    "backfill": "npm run backfill -w @lp/bot",
+    "snapshot": "npm run snapshot -w @lp/bot",
+    "activity": "npm run activity -w @lp/bot",
+    "rank": "npm run rank -w @lp/bot",
+    "yield": "npm run yield -w @lp/bot",
+    "pnl": "npm run pnl -w @lp/bot",
+    "plan": "npm run plan -w @lp/bot",
+    "collect": "npm run collect -w @lp/bot",
+    "test": "npm run test -w @lp/bot",
+    "test:live": "npm run test:live -w @lp/bot"
+  }
+}
