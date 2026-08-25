@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { SubmitButton } from "@/components/submit-button";
 import { Toggle } from "@/components/toggle";
 import type { OwnedWallet } from "@/server/wallet-actions";
 import {
@@ -80,9 +81,12 @@ export function ManagePanel({
             autoComplete="off"
             className="rounded-lg border border-line/60 px-3 py-2 font-mono text-sm"
           />
-          <button type="submit" className="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-white">
+          <SubmitButton
+            pendingText="Mengaktifkan…"
+            className="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+          >
             Enable automation
-          </button>
+          </SubmitButton>
         </form>
       ) : (
         <div className="flex flex-col gap-4">
@@ -136,22 +140,22 @@ export function ManagePanel({
               <Toggle name="automation" defaultChecked={wallet.automation === 1} label="automation" />
               <Toggle name="autoswap" defaultChecked={wallet.autoswap === 1} label="auto-swap" />
             </div>
-            <button
-              type="submit"
-              className="rounded-lg border border-line/60 px-4 py-2 text-sm hover:bg-shade"
+            <SubmitButton
+              pendingText="Menyimpan…"
+              className="rounded-lg border border-line/60 px-4 py-2 text-sm hover:bg-shade disabled:opacity-60"
             >
               Save
-            </button>
+            </SubmitButton>
           </form>
           <div className="flex flex-wrap items-center gap-3">
             <form action={executeNowAction}>
-              <button
-                type="submit"
+              <SubmitButton
+                pendingText="Menjalankan…"
                 disabled={wallet.automation === 0 || wallet.fund_eth === 0}
                 className="rounded-lg bg-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
                 Execute now
-              </button>
+              </SubmitButton>
             </form>
             <form action={removeWalletAction}>
               <button type="submit" className="text-sm text-red-600 hover:underline">
