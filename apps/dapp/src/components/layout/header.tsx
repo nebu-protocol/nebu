@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 const BACKOFFICE_URL = process.env.NEXT_PUBLIC_BACKOFFICE_URL ?? "https://bo-lp.ifajar.dev";
@@ -13,7 +14,7 @@ export function Header() {
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 font-semibold">
-            <span className="inline-block size-6 rounded-md bg-ink" />
+            <Image src="/lp-logo.png" alt="LP Bot" width={24} height={24} className="size-6 rounded-md" />
             LP Bot
           </Link>
           <nav className="hidden gap-4 text-sm text-soft sm:flex">

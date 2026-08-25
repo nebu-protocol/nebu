@@ -97,6 +97,16 @@ CREATE TABLE IF NOT EXISTS positions (
 );
 CREATE INDEX IF NOT EXISTS idx_positions_open ON positions (wallet, pool_id, status);
 
+-- Riwayat PnL per posisi (append-only, satu baris per pool per siklus) — untuk chart dapp
+CREATE TABLE IF NOT EXISTS pnl_history (
+  pool_id  TEXT NOT NULL,
+  ts       INTEGER NOT NULL,
+  net_pct  REAL NOT NULL,
+  fees_pct REAL NOT NULL,
+  il_pct   REAL NOT NULL,
+  PRIMARY KEY (pool_id, ts)
+);
+
 -- PnL posisi (simulasi) vs HODL — dibaca backoffice
 CREATE TABLE IF NOT EXISTS positions_pnl (
   pool_id          TEXT PRIMARY KEY,

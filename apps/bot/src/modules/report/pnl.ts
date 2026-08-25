@@ -105,11 +105,15 @@ export function materializePnl(db: ReturnType<typeof openDb>, rows: (PositionPnl
      (pool_id, pair, entry_ts, holding_days, price_change_pct, fees_pct, il_pct, net_pct, computed_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
+  const histIns = db.prepare(
+    `INSERT OR REPLACE INTO pnl_history (pool_id, ts, net_pct, fees_pct, il_pct) VALUES (?, ?, ?, ?, ?)`,
+  )
   const now = Math.floor(Date.now() / 1000)
   db.exec('BEGIN')
   db.exec('DELETE FROM positions_pnl')
   for (const r of rows) {
     ins.run(r.pool_id, r.pair, r.entry_ts, r.holdingDays, r.priceChangePct, r.feesPct, r.ilPct, r.netPct, now)
+    histIns.run(r.pool_id, now, r.netPct, r.feesPct, r.ilPct) // append riwayat
   }
   db.exec('COMMIT')
 }

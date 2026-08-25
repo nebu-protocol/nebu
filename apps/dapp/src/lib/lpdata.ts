@@ -76,6 +76,111 @@ export function getEthUsdSeries(): SeriesPoint[] {
   }
 }
 
+// ---------------------------------------------------- per connected wallet
+
+const isAddr = (a: string) => /^0x[0-9a-fA-F]{40}$/.test(a);
+
+/** Pool yang dimasuki wallet (posisi OPEN). */
+function walletPools(address: string): string[] {
+  if (!isAddr(address)) return [];
+  const addr = address.toLowerCase();
+  try {
+    return (
+      getDb()
+        .prepare("SELECT DISTINCT pool_id FROM positions WHERE status = 'OPEN' AND lower(wallet) = ?")
+        .all(addr) as { pool_id: string }[]
+    ).map((r) => r.pool_id);
+  } catch {
+    return [];
+  }
+}
+
+export type WalletPortfolio = {
+  fundEth: number;
+  ethUsd: number | null;
+  positions: number;
+  avgNet: number | null;
+  winners: number;
+};
+
+/** Ringkasan portfolio untuk satu wallet (yang di-connect). */
+export function getWalletPortfolio(address: string): WalletPortfolio {
+  const ethUsd = getLpStats().ethUsd;
+  if (!isAddr(address)) return { fundEth: 0, ethUsd, positions: 0, avgNet: null, winners: 0 };
+  const addr = address.toLowerCase();
+  try {
+    const d = getDb();
+    const fundEth =
+      (d.prepare("SELECT COALESCE(SUM(fund_eth),0) s FROM wallets WHERE lower(address) = ?").get(addr) as {
+        s: number;
+      }).s ?? 0;
+    const pools = walletPools(addr);
+    if (pools.length === 0) return { fundEth, ethUsd, positions: 0, avgNet: null, winners: 0 };
+    const q = pools.map(() => "?").join(",");
+    const pnl = d.prepare(`SELECT net_pct FROM positions_pnl WHERE pool_id IN (${q})`).all(...pools) as {
+      net_pct: number;
+    }[];
+    const avgNet = pnl.length ? pnl.reduce((s, p) => s + p.net_pct, 0) / pnl.length : null;
+    return { fundEth, ethUsd, positions: pools.length, avgNet, winners: pnl.filter((p) => p.net_pct > 0).length };
+  } catch {
+    return { fundEth: 0, ethUsd, positions: 0, avgNet: null, winners: 0 };
+  }
+}
+
+/** Seri net-vs-HODL portfolio wallet: rata-rata net_pct per timestamp lintas pool wallet. */
+export function getWalletPnlSeries(address: string): SeriesPoint[] {
+  const pools = walletPools(address);
+  if (pools.length === 0) return [];
+  try {
+    const q = pools.map(() => "?").join(",");
+    const rows = getDb()
+      .prepare(`SELECT ts, AVG(net_pct) v FROM pnl_history WHERE pool_id IN (${q}) GROUP BY ts ORDER BY ts`)
+      .all(...pools) as { ts: number; v: number }[];
+    return rows.map((r) => ({ timestamp: r.ts * 1000, value: r.v }));
+  } catch {
+    return [];
+  }
+}
+
+export type WalletPosition = {
+  pair: string;
+  net_pct: number;
+  fees_pct: number;
+  il_pct: number;
+  history: SeriesPoint[];
+};
+
+/** Posisi wallet + PnL saat ini + riwayat net_pct per posisi. */
+export function getWalletPositions(address: string): WalletPosition[] {
+  const pools = walletPools(address);
+  if (pools.length === 0) return [];
+  try {
+    const d = getDb();
+    return pools
+      .map((poolId) => {
+        const cur = d
+          .prepare("SELECT pair, net_pct, fees_pct, il_pct FROM positions_pnl WHERE pool_id = ?")
+          .get(poolId) as { pair: string; net_pct: number; fees_pct: number; il_pct: number } | undefined;
+        if (!cur) return null;
+        const hist = d.prepare("SELECT ts, net_pct FROM pnl_history WHERE pool_id = ? ORDER BY ts").all(poolId) as {
+          ts: number;
+          net_pct: number;
+        }[];
+        return {
+          pair: cur.pair,
+          net_pct: cur.net_pct,
+          fees_pct: cur.fees_pct,
+          il_pct: cur.il_pct,
+          history: hist.map((h) => ({ timestamp: h.ts * 1000, value: h.net_pct })),
+        };
+      })
+      .filter((x): x is WalletPosition => x !== null)
+      .sort((a, b) => b.net_pct - a.net_pct);
+  } catch {
+    return [];
+  }
+}
+
 export type TopPool = { pair: string; apr20: number; age_days: number | null };
 
 export function getTopPools(limit = 8): TopPool[] {
