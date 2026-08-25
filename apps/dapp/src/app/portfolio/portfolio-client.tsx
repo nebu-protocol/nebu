@@ -74,6 +74,40 @@ export function PortfolioClient({ siteKey }: { siteKey: string | null }) {
     }
   }, [load, siteKey]);
 
+  const [signing, setSigning] = useState(false);
+  const signToManage = useCallback(async () => {
+    if (!address) return;
+    const eth = (
+      window as unknown as { ethereum?: { request: (a: { method: string; params?: unknown[] }) => Promise<unknown> } }
+    ).ethereum;
+    if (!eth) return;
+    setSigning(true);
+    setError(null);
+    try {
+      const nres = await fetch("/api/siwe/nonce", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ address }),
+      });
+      const { message } = (await nres.json()) as { message: string };
+      const signature = (await eth.request({ method: "personal_sign", params: [message, address] })) as string;
+      const vres = await fetch("/api/siwe/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ address, signature, token: tokenRef.current }),
+      });
+      if (!vres.ok) {
+        setError((await vres.json().catch(() => ({}))).error ?? "verifikasi gagal");
+        return;
+      }
+      window.location.reload(); // server akan render panel manage
+    } catch {
+      setError("Tanda tangan dibatalkan.");
+    } finally {
+      setSigning(false);
+    }
+  }, [address]);
+
   if (!address || !data) {
     return (
       <div className="mx-auto max-w-sm rounded-xl border border-line/60 p-6 text-center">
@@ -106,9 +140,19 @@ export function PortfolioClient({ siteKey }: { siteKey: string | null }) {
         <span className="font-mono text-sm text-soft">
           {address.slice(0, 6)}…{address.slice(-4)}
         </span>
-        <button type="button" onClick={() => load(address)} className="text-sm text-soft hover:text-ink">
-          ↻ refresh
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={signToManage}
+            disabled={signing}
+            className="rounded-lg bg-ink px-3 py-1.5 text-sm font-medium text-white disabled:opacity-60"
+          >
+            {signing ? "Menandatangani…" : "Sign to manage"}
+          </button>
+          <button type="button" onClick={() => load(address)} className="text-sm text-soft hover:text-ink">
+            ↻ refresh
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
