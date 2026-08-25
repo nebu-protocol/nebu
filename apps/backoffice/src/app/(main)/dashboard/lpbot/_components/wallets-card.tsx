@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { KeyRound, Plus, Trash2 } from "lucide-react";
+import { KeyRound, Play, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { LpWallet } from "@/server/lpbot";
-import { addLpbotWallet, deleteLpbotWallet, updateLpbotWallet } from "@/server/lpbot-wallet-actions";
+import { addLpbotWallet, deleteLpbotWallet, executeNowAction, updateLpbotWallet } from "@/server/lpbot-wallet-actions";
 
 export function WalletsCard({ wallets }: { wallets: LpWallet[] }) {
   const [addOpen, setAddOpen] = useState(false);
@@ -78,6 +78,7 @@ export function WalletsCard({ wallets }: { wallets: LpWallet[] }) {
               <TableRow>
                 <TableHead>Wallet</TableHead>
                 <TableHead>Fund (ETH) · Max/Pool · Automation · Auto-swap</TableHead>
+                <TableHead>Run</TableHead>
                 <TableHead className="text-right">Remove</TableHead>
               </TableRow>
             </TableHeader>
@@ -126,6 +127,27 @@ export function WalletsCard({ wallets }: { wallets: LpWallet[] }) {
                       </span>
                       <Button type="submit" size="sm" variant="outline">
                         Save
+                      </Button>
+                    </form>
+                  </TableCell>
+                  <TableCell className="align-top">
+                    <form action={executeNowAction}>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={w.has_entered === 1 || w.automation === 0 || w.fund_eth === 0}
+                        title={
+                          w.has_entered === 1
+                            ? "Sudah masuk posisi"
+                            : w.automation === 0
+                              ? "Aktifkan automation dulu"
+                              : w.fund_eth === 0
+                                ? "Set fund dulu"
+                                : "Jalankan executor sekarang"
+                        }
+                      >
+                        <Play className="size-3.5" />
+                        {w.has_entered === 1 ? "Entered" : "Execute"}
                       </Button>
                     </form>
                   </TableCell>

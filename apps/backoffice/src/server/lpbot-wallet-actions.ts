@@ -7,11 +7,32 @@ import { privateKeyToAccount } from "viem/accounts";
 import { canEditWallet, requireMember, type Session } from "@/server/auth";
 import { encryptSecret, getKeySecret } from "@/server/lpbot-crypto";
 
+import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 const DB_PATH = process.env.LPBOT_DB_PATH ?? resolve(process.cwd(), "../../data/lp.db");
+const REPO = resolve(process.cwd(), "../..");
+
+/**
+ * Jalankan executor bot sekali sekarang (tanpa nunggu siklus 1 jam).
+ * Spawn `tsx apps/bot/src/index.ts execute`. Idempotent (executor dedup per
+ * wallet+pool), jadi aman diklik berkali-kali. Tetap hormati EXECUTOR_LIVE.
+ */
+export async function executeNowAction(): Promise<void> {
+  await requireMember();
+  await new Promise<void>((res) => {
+    const child = spawn(resolve(REPO, "node_modules/.bin/tsx"), [resolve(REPO, "apps/bot/src/index.ts"), "execute"], {
+      cwd: resolve(REPO, "apps/bot"),
+      env: { ...process.env, DB_PATH },
+      timeout: 90_000,
+    });
+    child.on("close", () => res());
+    child.on("error", () => res());
+  });
+  revalidatePath("/dashboard/lpbot");
+}
 
 function withDb<T>(fn: (db: DatabaseSync) => T): T {
   const db = new DatabaseSync(DB_PATH);

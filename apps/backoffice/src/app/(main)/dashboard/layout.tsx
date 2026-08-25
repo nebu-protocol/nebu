@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 
 import { AppSidebar } from "@/app/(main)/dashboard/_components/sidebar/app-sidebar";
-import { GeneratedAvatar } from "@/components/generated-avatar";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { getSession } from "@/server/auth";
@@ -11,6 +10,7 @@ import { getPreference } from "@/server/server-actions";
 
 import { LayoutControls } from "./_components/header/layout-controls";
 import { ThemeSwitcher } from "./_components/header/theme-switcher";
+import { UserMenu } from "./_components/header/user-menu";
 
 export default async function Layout({ children }: Readonly<{ children: ReactNode }>) {
   const cookieStore = await cookies();
@@ -56,10 +56,7 @@ export default async function Layout({ children }: Readonly<{ children: ReactNod
             <div className="flex items-center gap-2">
               <LayoutControls />
               <ThemeSwitcher />
-              <div className="flex items-center gap-2 pl-1">
-                <GeneratedAvatar name={user.username} size={28} className="size-7" />
-                <span className="hidden text-sm font-medium sm:inline">{user.username}</span>
-              </div>
+              <UserMenu username={user.username} role={user.role} />
             </div>
           </div>
         </header>

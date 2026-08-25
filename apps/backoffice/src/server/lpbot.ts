@@ -54,6 +54,7 @@ export type LpWallet = {
   automation: number;
   autoswap: number;
   created_at: number;
+  has_entered: number; // 1 jika sudah ada SWAP_IN (posisi masuk) — untuk disable tombol Execute
 };
 
 export type LpExecution = {
@@ -71,7 +72,9 @@ export type LpExecution = {
 /** Admin: semua wallet. Member: hanya miliknya. Viewer: kosong (tak boleh lihat key-bearing rows). */
 export function getLpbotWallets(opts: { role: string; username: string }): LpWallet[] {
   if (opts.role === "viewer") return [];
-  const cols = "address, name, owner, fund_eth, max_per_pool_eth, automation, autoswap, created_at";
+  const cols =
+    "address, name, owner, fund_eth, max_per_pool_eth, automation, autoswap, created_at, " +
+    "EXISTS(SELECT 1 FROM executions e WHERE e.wallet = wallets.address AND e.kind = 'SWAP_IN' AND e.status != 'FAILED') AS has_entered";
   if (opts.role === "admin") {
     return plain(getDb().prepare(`SELECT ${cols} FROM wallets ORDER BY created_at`).all() as LpWallet[]);
   }
