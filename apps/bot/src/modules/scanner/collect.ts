@@ -3,11 +3,13 @@ import { run as snapshot } from './snapshot.ts'
 import { run as plan } from '../strategy/plan.ts'
 import { run as execute } from '../executor/executor.ts'
 import { run as pnl } from '../report/pnl.ts'
+import { run as price } from '../price/ethusd.ts'
 import { log, sleep } from '../../core/util.ts'
 
 /** Satu siklus lengkap: activity → snapshot → plan → execute → pnl. Tiap step diisolasi. */
 async function cycle() {
   const steps: [string, () => Promise<unknown>][] = [
+    ['price', () => price()],
     ['activity', () => activity(['1'])],
     ['snapshot', () => snapshot([])],
     ['plan', () => plan()],

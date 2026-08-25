@@ -7,7 +7,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getSession } from "@/server/auth";
-import { getLpbotExecutions, getLpbotPnl, getLpbotSummary, getLpbotWallets, type LpbotSummary } from "@/server/lpbot";
+import {
+  getEthUsd,
+  getLpbotExecutions,
+  getLpbotPnl,
+  getLpbotSummary,
+  getLpbotWallets,
+  getWalletBalances,
+  type LpbotSummary,
+} from "@/server/lpbot";
 import { toggleLpbotPause } from "@/server/lpbot-actions";
 
 import { LpbotTabs } from "./_components/lpbot-tabs";
@@ -42,6 +50,8 @@ export default async function Page() {
 
   const { stats, yields, decisions } = summary;
   const wallets = getLpbotWallets({ role, username: currentUser ?? "" });
+  const ethUsd = getEthUsd();
+  const balances = await getWalletBalances(wallets.map((w) => w.address));
   const executions = getLpbotExecutions();
   const pnl = getLpbotPnl();
   const avgNet = pnl.length ? pnl.reduce((s, p) => s + p.net_pct, 0) / pnl.length : null;
@@ -105,6 +115,8 @@ export default async function Page() {
         wallets={wallets}
         executions={executions}
         canManageWallets={role !== "viewer"}
+        balances={balances}
+        ethUsd={ethUsd}
       />
     </div>
   );

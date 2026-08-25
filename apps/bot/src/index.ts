@@ -8,6 +8,7 @@ const commands: Record<string, () => Promise<{ run: (args: string[]) => Promise<
   rank: () => import('./modules/report/rank.ts'),
   yield: () => import('./modules/report/yield.ts'),
   pnl: () => import('./modules/report/pnl.ts'),
+  price: () => import('./modules/price/ethusd.ts'),
   plan: () => import('./modules/strategy/plan.ts'),
   execute: () => import('./modules/executor/executor.ts'),
   user: () => import('./modules/auth/users.ts'),

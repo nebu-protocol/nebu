@@ -40,9 +40,11 @@ type Props = {
   wallets: LpWallet[];
   executions: LpExecution[];
   canManageWallets: boolean;
+  balances: Record<string, string>;
+  ethUsd: number | null;
 };
 
-export function LpbotTabs({ decisions, pnl, yields, wallets, executions, canManageWallets }: Props) {
+export function LpbotTabs({ decisions, pnl, yields, wallets, executions, canManageWallets, balances, ethUsd }: Props) {
   const activeWallets = wallets.filter((w) => w.automation === 1).length;
 
   return (
@@ -209,7 +211,7 @@ export function LpbotTabs({ decisions, pnl, yields, wallets, executions, canMana
       {/* WALLETS */}
       {canManageWallets && (
         <TabsContent value="wallets">
-          <WalletsCard wallets={wallets} />
+          <WalletsCard wallets={wallets} balances={balances} ethUsd={ethUsd} />
         </TabsContent>
       )}
 

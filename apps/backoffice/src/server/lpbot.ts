@@ -87,6 +87,65 @@ export function getLpbotExecutions(limit = 20): LpExecution[] {
   return plain(getDb().prepare("SELECT * FROM executions ORDER BY id DESC LIMIT ?").all(limit) as LpExecution[]);
 }
 
+/**
+ * Harga 1 ETH dalam USD. Dibaca dari meta `eth_usd` (di-set bot dari beberapa
+ * price feed + fallback tiap siklus) — cepat, tanpa memukul API eksternal per-render.
+ * Fallback on-chain (ETH/USDG) kalau meta belum ada.
+ */
+export function getEthUsd(): number | null {
+  try {
+    const meta = getDb().prepare("SELECT value FROM meta WHERE key = 'eth_usd'").get() as { value: string } | undefined;
+    const cached = meta ? Number(meta.value) : NaN;
+    if (cached > 0 && Number.isFinite(cached)) return cached;
+
+    const row = getDb()
+      .prepare(
+        `SELECT s.sqrt_price_x96 AS sp, t1.decimals AS dec1
+         FROM pools p JOIN tokens t1 ON t1.address = p.currency1
+         JOIN pool_snapshots s ON s.pool_id = p.pool_id
+           AND s.ts = (SELECT MAX(ts) FROM pool_snapshots WHERE pool_id = p.pool_id)
+         WHERE p.currency0 = '0x0000000000000000000000000000000000000000' AND t1.symbol = 'USDG'
+         ORDER BY CAST(s.liquidity AS REAL) DESC LIMIT 1`,
+      )
+      .get() as { sp: string; dec1: number } | undefined;
+    if (!row?.dec1) return null;
+    const sqrtP = Number(BigInt(row.sp)) / 2 ** 96;
+    const ethUsd = sqrtP * sqrtP * 10 ** (18 - row.dec1);
+    return ethUsd > 0 && Number.isFinite(ethUsd) ? ethUsd : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Saldo ETH on-chain (wei, string) per address via JSON-RPC batch. */
+export async function getWalletBalances(addresses: string[]): Promise<Record<string, string>> {
+  if (addresses.length === 0) return {};
+  const rpc = process.env.ROBINHOOD_RPC_URL ?? "https://rpc.mainnet.chain.robinhood.com";
+  const body = addresses.map((a, i) => ({
+    jsonrpc: "2.0",
+    id: i,
+    method: "eth_getBalance",
+    params: [a, "latest"],
+  }));
+  try {
+    const res = await fetch(rpc, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = (await res.json()) as { id: number; result?: string }[];
+    const out: Record<string, string> = {};
+    for (const item of data) {
+      const addr = addresses[item.id];
+      if (addr) out[addr] = item.result ? BigInt(item.result).toString() : "0";
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 export type LpPositionPnl = {
   pool_id: string;
   pair: string;

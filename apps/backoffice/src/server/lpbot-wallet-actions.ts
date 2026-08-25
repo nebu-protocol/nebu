@@ -74,14 +74,23 @@ export async function addLpbotWallet(formData: FormData): Promise<void> {
   const encPk = encryptSecret(pk, secret);
   pk = "";
 
-  withDb((db) =>
-    db
-      .prepare(
-        `INSERT INTO wallets (address, name, enc_pk, owner, fund_eth, max_per_pool_eth, automation, autoswap, created_at)
-         VALUES (?, ?, ?, ?, 0, 0, 0, 0, ?)`,
-      )
-      .run(address, name, encPk, session.username, Math.floor(Date.now() / 1000)),
-  );
+  withDb((db) => {
+    // wallet unik: satu address hanya boleh dimiliki satu user
+    const existing = db.prepare("SELECT owner FROM wallets WHERE address = ?").get(address) as
+      | { owner: string | null }
+      | undefined;
+    if (existing) {
+      throw new Error(
+        existing.owner === session.username
+          ? "Wallet ini sudah kamu tambahkan."
+          : "Wallet ini sudah dipakai user lain.",
+      );
+    }
+    db.prepare(
+      `INSERT INTO wallets (address, name, enc_pk, owner, fund_eth, max_per_pool_eth, automation, autoswap, created_at)
+       VALUES (?, ?, ?, ?, 0, 0, 0, 0, ?)`,
+    ).run(address, name, encPk, session.username, Math.floor(Date.now() / 1000));
+  });
   revalidatePath("/dashboard/lpbot");
 }
 
