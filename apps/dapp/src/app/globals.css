@@ -1,0 +1,186 @@
+@import "tailwindcss";
+
+/* Tailwind v4 preflight leaves buttons with cursor:default; restore the
+   pointer affordance on everything clickable (official upgrade-guide rule). */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* Gellix (licensed) — uncomment after dropping the woff2 files into
+   public/fonts/gellix/ (see that folder's README). Until then the stack
+   falls through to Geist and no 404s are issued.
+
+@font-face {
+  font-family: "Gellix";
+  src: url("/fonts/gellix/Gellix-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gellix";
+  src: url("/fonts/gellix/Gellix-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gellix";
+  src: url("/fonts/gellix/Gellix-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gellix";
+  src: url("/fonts/gellix/Gellix-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+*/
+
+@theme inline {
+  --font-sans: "Gellix", var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@theme {
+  --color-ink: #16181a;
+  --color-body: #3f4447;
+  /* WCAG AA: soft ≥4.5 on shade (#f5f5f3), faint ≥4.5 on #fafaf8 */
+  --color-soft: #676c70;
+  --color-faint: #6f747a;
+  --color-line: #e9e9e7;
+  --color-shade: #f5f5f3;
+  --color-hero: #0c2d1d;
+  --color-pos: #007a4b;
+  --color-neg: #d53f3f;
+}
+
+body {
+  background: #fff;
+  color: var(--color-ink);
+}
+
+/* The single page container: header, footer, and every main use this so
+   page edges always line up. Narrow layouts nest an inner max-w column. */
+.container-page {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 87.5rem; /* 1400px */
+  padding-inline: 1.25rem;
+}
+@media (min-width: 768px) {
+  .container-page {
+    padding-inline: 2rem;
+  }
+}
+
+/* Asset card: white fading into a wash of the trend color (--card-tint).
+   Gradients can't animate, so hover fades in a stronger overlay instead. */
+.asset-card {
+  position: relative;
+  /* keep the ::before overlay between the background and the content */
+  isolation: isolate;
+  background: linear-gradient(
+    180deg,
+    #fff 40%,
+    color-mix(in srgb, var(--card-tint) 10%, #fff) 100%
+  );
+}
+.asset-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    #fff 25%,
+    color-mix(in srgb, var(--card-tint) 26%, #fff) 100%
+  );
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+}
+.asset-card:hover::before {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .asset-card::before {
+    transition: none;
+  }
+}
+
+/* Skeleton placeholder text stays invisible even before the phantom-ui
+   custom element upgrades (prevents a double-text flash). */
+phantom-ui:not(:defined),
+phantom-ui:not(:defined) * {
+  /* biome-ignore lint/complexity/noImportantStyles: must beat component text colors until the custom element upgrades */
+  color: transparent !important;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Chart entrance: the line draws left-to-right (normalized pathLength=1),
+   then the area gradient fades in underneath it. */
+@keyframes chart-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes chart-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes chart-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+.chart-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chart-draw 900ms cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+.chart-area {
+  opacity: 0;
+  animation: chart-fade 600ms ease-out 350ms forwards;
+}
+/* Sparklines can't use the dash trick: pathLength + non-scaling-stroke +
+   preserveAspectRatio="none" miscomputes dashes in Chrome, cutting the line.
+   Revealing the whole svg left-to-right sidesteps it. */
+.chart-reveal {
+  animation: chart-reveal 900ms cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .chart-line,
+  .chart-area,
+  .chart-reveal {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}

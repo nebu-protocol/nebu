@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Typecheck & build
+    runs-on: ubuntu-latest
+    steps:
+      # The dapp consumes @sowee/* via file:../../packages/*, so CI recreates
+      # the monorepo layout: sowee at the root, this repo at apps/dapp.
+      - name: Checkout monorepo
+        uses: actions/checkout@v4
+        with:
+          repository: sowee-finance/sowee
+      - name: Checkout dapp into apps/dapp
+        uses: actions/checkout@v4
+        with:
+          path: apps/dapp
+      # Version comes from the monorepo root's packageManager field.
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build workspace packages
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Install app
+        working-directory: apps/dapp
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        working-directory: apps/dapp
+        run: pnpm typecheck
+      - name: Build
+        working-directory: apps/dapp
+        run: pnpm build

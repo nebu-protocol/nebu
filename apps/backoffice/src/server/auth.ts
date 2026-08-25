@@ -21,7 +21,7 @@ function sessionSecret(): string {
   return s;
 }
 
-function hashPassword(pw: string): string {
+export function hashPassword(pw: string): string {
   const salt = randomBytes(16);
   return `s1:${salt.toString("hex")}:${scryptSync(pw, salt, 32).toString("hex")}`;
 }
@@ -43,20 +43,35 @@ export function registerUser(username: string, password: string): { ok: boolean;
   }
 }
 
-/** Verifikasi login; balikkan role bila cocok, null bila gagal. */
+/** Verifikasi login; balikkan role bila cocok, null bila gagal/diblokir. */
 export function verifyLogin(username: string, password: string): Role | null {
   const db = new DatabaseSync(DB_PATH);
   try {
-    const row = db.prepare("SELECT pass_hash, role FROM users WHERE username = ?").get(username) as
-      | { pass_hash: string; role: string }
+    const row = db.prepare("SELECT pass_hash, role, blocked FROM users WHERE username = ?").get(username) as
+      | { pass_hash: string; role: string; blocked: number }
       | undefined;
-    if (!row) return null;
+    if (!row || row.blocked === 1) return null;
     const [v, saltHex, hashHex] = row.pass_hash.split(":");
     if (v !== "s1" || !saltHex || !hashHex) return null;
     const expected = Buffer.from(hashHex, "hex");
     const actual = scryptSync(password, Buffer.from(saltHex, "hex"), 32);
     if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
     return normalizeRole(row.role);
+  } finally {
+    db.close();
+  }
+}
+
+/** Cek user masih ada & tidak diblokir (revokasi sesi aktif secara instan). */
+function userActive(username: string): boolean {
+  const db = new DatabaseSync(DB_PATH);
+  try {
+    const row = db.prepare("SELECT blocked FROM users WHERE username = ?").get(username) as
+      | { blocked: number }
+      | undefined;
+    return !!row && row.blocked !== 1;
+  } catch {
+    return true; // tabel users belum ada (bootstrap) — jangan kunci
   } finally {
     db.close();
   }
@@ -89,6 +104,7 @@ export async function getSession(): Promise<Session | null> {
   try {
     const { u, r, exp } = JSON.parse(Buffer.from(payload, "base64url").toString());
     if (typeof exp !== "number" || exp <= Math.floor(Date.now() / 1000)) return null;
+    if (!userActive(String(u))) return null; // diblokir/dihapus → sesi mati instan
     return { username: String(u), role: normalizeRole(r) };
   } catch {
     return null;

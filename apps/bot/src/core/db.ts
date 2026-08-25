@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS users (
   username   TEXT PRIMARY KEY,
   pass_hash  TEXT NOT NULL,
   role       TEXT NOT NULL DEFAULT 'viewer',
+  blocked    INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
 
@@ -156,6 +157,7 @@ export function openDb(path: string = DB_PATH): DatabaseSync {
   // migrasi kolom baru untuk DB lama (aman kalau kolom sudah ada)
   for (const stmt of [
     "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'viewer'",
+    'ALTER TABLE users ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0',
     'ALTER TABLE wallets ADD COLUMN owner TEXT',
   ]) {
     try {
