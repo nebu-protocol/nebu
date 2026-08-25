@@ -68,6 +68,6 @@ export async function middleware(req: NextRequest) {
 // Lindungi semua kecuali login, aset statis, dan file publik ringan.
 export const config = {
   matcher: [
-    "/((?!auth/login|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|icon-192.png|icon-512.png|manifest.webmanifest|robots.txt).*)",
+    "/((?!auth/login|auth/register|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|icon-192.png|icon-512.png|lp-logo.png|manifest.webmanifest|robots.txt).*)",
   ],
 };

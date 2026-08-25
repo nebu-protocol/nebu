@@ -9,6 +9,8 @@ nvm use 22 >/dev/null
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO"
+# muat .env supaya build punya env (TURNSTILE dll.)
+[ -f "$REPO/.env" ] && set -a && . "$REPO/.env" && set +a
 
 echo "==> pull (skip kalau remote butuh auth / rsync-based deploy)"
 git pull --ff-only 2>/dev/null || echo "   (lewati git pull — kode diasumsikan sudah sinkron via rsync)"

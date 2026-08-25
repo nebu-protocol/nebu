@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 
 import { turnstileSiteKey } from "@/server/turnstile";
 
-import { LoginPanel } from "./login-panel";
+import { RegisterPanel } from "./register-panel";
 
-export const metadata: Metadata = { title: "Login" };
+export const metadata: Metadata = { title: "Daftar" };
 export const dynamic = "force-dynamic"; // baca TURNSTILE_SITE_KEY saat runtime
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
-      <LoginPanel siteKey={turnstileSiteKey()} />
+      <RegisterPanel siteKey={turnstileSiteKey()} />
     </div>
   );
 }

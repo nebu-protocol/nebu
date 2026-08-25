@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import { createHmac, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
@@ -19,6 +19,28 @@ function sessionSecret(): string {
   const s = process.env.SESSION_SECRET ?? process.env.LPBOT_KEY_SECRET;
   if (!s) throw new Error("SESSION_SECRET (atau LPBOT_KEY_SECRET) belum di-set");
   return s;
+}
+
+function hashPassword(pw: string): string {
+  const salt = randomBytes(16);
+  return `s1:${salt.toString("hex")}:${scryptSync(pw, salt, 32).toString("hex")}`;
+}
+
+/** Registrasi mandiri → selalu role 'member'. Gagal bila username sudah ada. */
+export function registerUser(username: string, password: string): { ok: boolean; error?: string } {
+  const db = new DatabaseSync(DB_PATH);
+  try {
+    const exists = db.prepare("SELECT 1 FROM users WHERE username = ?").get(username);
+    if (exists) return { ok: false, error: "Username sudah dipakai." };
+    db.prepare("INSERT INTO users (username, pass_hash, role, created_at) VALUES (?, ?, 'member', ?)").run(
+      username,
+      hashPassword(password),
+      Math.floor(Date.now() / 1000),
+    );
+    return { ok: true };
+  } finally {
+    db.close();
+  }
 }
 
 /** Verifikasi login; balikkan role bila cocok, null bila gagal. */
