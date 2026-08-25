@@ -1,13 +1,12 @@
 import Image from "next/image";
 
 import { formatDistanceToNow } from "date-fns";
-import { LogOut, Pause, Play } from "lucide-react";
+import { Pause, Play } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getSession } from "@/server/auth";
-import { logoutAction } from "@/server/auth-actions";
 import { getLpbotExecutions, getLpbotPnl, getLpbotSummary, getLpbotWallets, type LpbotSummary } from "@/server/lpbot";
 import { toggleLpbotPause } from "@/server/lpbot-actions";
 
@@ -80,11 +79,6 @@ export default async function Page() {
               </Button>
             </form>
           )}
-          <form action={logoutAction}>
-            <Button variant="outline" size="icon" title="Logout">
-              <LogOut />
-            </Button>
-          </form>
         </div>
       </div>
 
