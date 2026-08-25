@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+
+import { Toggle } from "@/components/toggle";
 import type { OwnedWallet } from "@/server/wallet-actions";
 import {
   addWalletAction,
@@ -9,20 +12,47 @@ import {
   updateWalletAction,
 } from "@/server/wallet-actions";
 
-/**
- * Panel kelola automation untuk wallet yang sudah SIWE-verified.
- * Add wallet = paste private key wallet yang di-sign (server memverifikasi
- * key menurunkan ke address yang sama).
- */
-export function ManagePanel({ address, wallet }: { address: string; wallet: OwnedWallet }) {
+const fmtUsd = (n: number) =>
+  n >= 1 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
+
+export function ManagePanel({
+  address,
+  wallet,
+  balanceEth,
+  ethUsd,
+}: {
+  address: string;
+  wallet: OwnedWallet;
+  balanceEth: number | null;
+  ethUsd: number | null;
+}) {
+  const [ccy, setCcy] = useState<"ETH" | "USD">("ETH");
+  const [fund, setFund] = useState(String(wallet?.fund_eth ?? ""));
+  const fundEth = (() => {
+    const n = Number(fund);
+    if (!Number.isFinite(n)) return 0;
+    return ccy === "USD" && ethUsd ? n / ethUsd : n;
+  })();
+
+  const setMax = () => {
+    if (balanceEth === null) return;
+    setFund(ccy === "USD" && ethUsd ? (balanceEth * ethUsd).toFixed(2) : balanceEth.toFixed(4));
+  };
+
   return (
-    <div className="rounded-xl border border-line/60 p-4">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="rounded-2xl border border-line/60 p-4 sm:p-5">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-medium">Automation</h3>
           <span className="font-mono text-xs text-soft">
             verified {address.slice(0, 6)}…{address.slice(-4)}
           </span>
+          <div className="mt-1 text-xs text-soft">
+            Balance:{" "}
+            {balanceEth === null
+              ? "—"
+              : `${balanceEth.toFixed(4)} ETH${ethUsd ? ` · ${fmtUsd(balanceEth * ethUsd)}` : ""}`}
+          </div>
         </div>
         <form action={signOutAction}>
           <button type="submit" className="text-xs text-soft hover:text-ink">
@@ -57,16 +87,39 @@ export function ManagePanel({ address, wallet }: { address: string; wallet: Owne
       ) : (
         <div className="flex flex-col gap-4">
           <form action={updateWalletAction} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="fundEth" value={fundEth} />
             <label className="flex flex-col gap-1 text-xs">
-              Fund (ETH)
-              <input
-                name="fundEth"
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue={wallet.fund_eth}
-                className="w-28 rounded-lg border border-line/60 px-3 py-2 text-sm"
-              />
+              Fund
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={fund}
+                  onChange={(e) => setFund(e.target.value)}
+                  className="w-28 rounded-lg border border-line/60 px-3 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCcy((c) => (c === "ETH" ? "USD" : "ETH"))}
+                  className="rounded-lg border border-line/60 px-2 py-2 text-xs hover:bg-shade"
+                >
+                  {ccy}
+                </button>
+                <button
+                  type="button"
+                  onClick={setMax}
+                  disabled={balanceEth === null}
+                  className="rounded-lg border border-line/60 px-2 py-2 text-xs hover:bg-shade disabled:opacity-50"
+                >
+                  Max
+                </button>
+              </div>
+              {ethUsd && fundEth > 0 && (
+                <span className="text-soft">
+                  {ccy === "ETH" ? `≈ ${fmtUsd(fundEth * ethUsd)}` : `≈ ${fundEth.toFixed(4)} ETH`}
+                </span>
+              )}
             </label>
             <label className="flex flex-col gap-1 text-xs">
               Max/pool (ETH)
@@ -79,17 +132,18 @@ export function ManagePanel({ address, wallet }: { address: string; wallet: Owne
                 className="w-28 rounded-lg border border-line/60 px-3 py-2 text-sm"
               />
             </label>
-            <label className="flex items-center gap-1.5 text-sm">
-              <input type="checkbox" name="automation" defaultChecked={wallet.automation === 1} /> automation
-            </label>
-            <label className="flex items-center gap-1.5 text-sm">
-              <input type="checkbox" name="autoswap" defaultChecked={wallet.autoswap === 1} /> auto-swap
-            </label>
-            <button type="submit" className="rounded-lg border border-line/60 px-3 py-2 text-sm">
+            <div className="flex flex-col gap-2 pb-1">
+              <Toggle name="automation" defaultChecked={wallet.automation === 1} label="automation" />
+              <Toggle name="autoswap" defaultChecked={wallet.autoswap === 1} label="auto-swap" />
+            </div>
+            <button
+              type="submit"
+              className="rounded-lg border border-line/60 px-4 py-2 text-sm hover:bg-shade"
+            >
               Save
             </button>
           </form>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <form action={executeNowAction}>
               <button
                 type="submit"

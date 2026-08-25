@@ -17,9 +17,9 @@ const chg = (n: number | null) =>
     </span>
   );
 
-export default async function Page() {
+export default function Page() {
   const stats = getLpStats();
-  const pools = await getPoolsTable(30);
+  const pools = getPoolsTable(30);
 
   return (
     <>
@@ -37,7 +37,7 @@ export default async function Page() {
               {pools.slice(0, 3).map((p) => (
                 <li key={p.poolId} className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <TokenIcon symbol={p.sym1} iconUrl={p.iconUrl} size={20} /> {p.sym1}
+                    <TokenIcon symbol={p.sym1} address={p.address} size={20} /> {p.sym1}
                   </span>
                   <span className="font-medium text-emerald-600">{p.apr20.toFixed(0)}%</span>
                 </li>
@@ -85,7 +85,7 @@ export default async function Page() {
                     <td className="px-4 py-3 text-soft">{i + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <TokenIcon symbol={p.sym1} iconUrl={p.iconUrl} size={28} />
+                        <TokenIcon symbol={p.sym1} address={p.address} size={28} />
                         <span className="font-medium">{p.sym1}</span>
                         <span className="text-xs text-soft">/ {p.sym0}</span>
                       </div>

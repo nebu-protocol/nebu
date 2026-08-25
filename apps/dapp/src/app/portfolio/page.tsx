@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { Header } from "@/components/layout/header";
 import { PortfolioChart } from "@/components/portfolio-chart";
-import { getWalletPnlSeries, getWalletPortfolio, getWalletPositions } from "@/lib/lpdata";
+import { getBalanceEth, getWalletPnlSeries, getWalletPortfolio, getWalletPositions } from "@/lib/lpdata";
 import { getSiweAddress } from "@/server/siwe";
 import { getOwnedWallet } from "@/server/wallet-actions";
 
@@ -34,17 +34,15 @@ export default async function PortfolioPage() {
 }
 
 async function ManagedView({ address }: { address: string }) {
-  const [owned, p, series, positions] = [
-    await getOwnedWallet(),
-    getWalletPortfolio(address),
-    getWalletPnlSeries(address),
-    getWalletPositions(address),
-  ];
+  const [owned, balanceEth] = await Promise.all([getOwnedWallet(), getBalanceEth(address)]);
+  const p = getWalletPortfolio(address);
+  const series = getWalletPnlSeries(address);
+  const positions = getWalletPositions(address);
   const fundUsd = p.ethUsd ? p.fundEth * p.ethUsd : null;
 
   return (
     <div className="flex flex-col gap-6">
-      <ManagePanel address={address} wallet={owned} />
+      <ManagePanel address={address} wallet={owned} balanceEth={balanceEth} ethUsd={p.ethUsd} />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Deployed fund" value={fmtUsd(fundUsd)} sub={`${p.fundEth.toFixed(3)} ETH`} />

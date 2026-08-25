@@ -202,7 +202,7 @@ export type PoolRow = {
   pair: string;
   sym0: string;
   sym1: string;
-  iconUrl: string | null;
+  address: string;
   apr20: number;
   feePerEthDay: number;
   volEth: number | null;
@@ -211,27 +211,8 @@ export type PoolRow = {
   changePct: number | null;
 };
 
-const ICON_BASE = "https://robinhoodchain.blockscout.com/api/v2/tokens/";
-const iconCache = new Map<string, string | null>();
-
-/** Ambil logo asli token dari Blockscout (icon_url), cache per proses. */
-async function tokenIcon(address: string): Promise<string | null> {
-  const key = address.toLowerCase();
-  if (iconCache.has(key)) return iconCache.get(key) ?? null;
-  try {
-    const res = await fetch(`${ICON_BASE}${key}`, { signal: AbortSignal.timeout(5000) });
-    const j = (await res.json()) as { icon_url?: string | null };
-    const url = j.icon_url && /^https?:\/\//.test(j.icon_url) ? j.icon_url : null;
-    iconCache.set(key, url);
-    return url;
-  } catch {
-    iconCache.set(key, null);
-    return null;
-  }
-}
-
-/** Tabel pool ala market: metrik + sparkline + logo asli token (Blockscout). */
-export async function getPoolsTable(limit = 30): Promise<PoolRow[]> {
+/** Tabel pool ala market: metrik + sparkline; logo dari file lokal (public/tokens/{address}). */
+export function getPoolsTable(limit = 30): PoolRow[] {
   try {
     const d = getDb();
     const rows = d
@@ -259,8 +240,7 @@ export async function getPoolsTable(limit = 30): Promise<PoolRow[]> {
     const sparkStmt = d.prepare(
       "SELECT sqrt_price_x96 FROM pool_snapshots WHERE pool_id = ? ORDER BY ts DESC LIMIT 32",
     );
-    const icons = await Promise.all(rows.map((r) => tokenIcon(r.addr1)));
-    return rows.map((r, i) => {
+    return rows.map((r) => {
       const snaps = (sparkStmt.all(r.pool_id) as { sqrt_price_x96: string }[]).reverse();
       const spark = snaps
         .map((s) => {
@@ -275,7 +255,7 @@ export async function getPoolsTable(limit = 30): Promise<PoolRow[]> {
         pair: r.pair,
         sym0: r.sym0 ?? "ETH",
         sym1: r.sym1 ?? "?",
-        iconUrl: icons[i],
+        address: r.addr1,
         apr20: r.apr20,
         feePerEthDay: r.fee_per_eth_day,
         volEth: r.vol_eth,
@@ -286,5 +266,23 @@ export async function getPoolsTable(limit = 30): Promise<PoolRow[]> {
     });
   } catch {
     return [];
+  }
+}
+
+/** Saldo ETH on-chain (dalam ETH) untuk satu address. */
+export async function getBalanceEth(address: string): Promise<number | null> {
+  if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return null;
+  const rpc = process.env.ROBINHOOD_RPC_URL ?? "https://rpc.mainnet.chain.robinhood.com";
+  try {
+    const res = await fetch(rpc, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_getBalance", params: [address, "latest"] }),
+      signal: AbortSignal.timeout(8000),
+    });
+    const j = (await res.json()) as { result?: string };
+    return j.result ? Number(BigInt(j.result)) / 1e18 : null;
+  } catch {
+    return null;
   }
 }

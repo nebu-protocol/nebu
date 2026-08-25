@@ -14,32 +14,33 @@ function hash(s: string): number {
 }
 
 /**
- * Logo token: coba logo asli (iconUrl Blockscout) lalu logo lokal token utama.
- * Kalau gambar gagal dimuat (URL rusak/404), jatuh ke ikon generatif — jadi
- * tidak pernah menampilkan gambar rusak.
+ * Logo token dari file lokal yang sudah diunduh (public/tokens/{address}.png),
+ * lalu logo token utama, terakhir ikon generatif. onError menjaga tak ada gambar rusak.
  */
 export function TokenIcon({
   symbol,
-  iconUrl,
+  address,
   size = 28,
 }: {
   symbol: string;
-  iconUrl?: string | null;
+  address?: string | null;
   size?: number;
 }) {
   const s = symbol.toLowerCase();
-  const src = iconUrl ?? (KNOWN.has(s) ? `/tokens/${s === "weth" ? "eth" : s}.png` : null);
-  const [failed, setFailed] = useState(false);
+  const candidates = [
+    address ? `/tokens/${address.toLowerCase()}.png` : null,
+    KNOWN.has(s) ? `/tokens/${s === "weth" ? "eth" : s}.png` : null,
+  ].filter(Boolean) as string[];
+  const [idx, setIdx] = useState(0);
 
-  if (src && !failed) {
-    // biome-ignore lint/performance/noImgElement: remote/static token logo, tiny
+  const src = candidates[idx];
+  if (src) {
+    // biome-ignore lint/performance/noImgElement: static token logo, tiny
     return (
       <img
         src={src}
         alt={symbol}
-        width={size}
-        height={size}
-        onError={() => setFailed(true)}
+        onError={() => setIdx((i) => i + 1)}
         className="shrink-0 rounded-full bg-shade object-cover"
         style={{ width: size, height: size }}
       />
