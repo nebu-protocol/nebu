@@ -196,3 +196,72 @@ export function getTopPools(limit = 8): TopPool[] {
     return [];
   }
 }
+
+export type PoolRow = {
+  poolId: string;
+  pair: string;
+  sym0: string;
+  sym1: string;
+  apr20: number;
+  feePerEthDay: number;
+  volEth: number | null;
+  swapsPerH: number;
+  spark: number[];
+  changePct: number | null;
+};
+
+/** Tabel pool ala market: metrik + sparkline harga per pool (dari pool_snapshots). */
+export function getPoolsTable(limit = 30): PoolRow[] {
+  try {
+    const d = getDb();
+    const rows = d
+      .prepare(
+        `SELECT y.pool_id, y.pair, y.apr20, y.fee_per_eth_day, y.vol_eth, y.swaps_per_h,
+                t0.symbol AS sym0, t1.symbol AS sym1
+         FROM yield_rows y
+         JOIN pools p ON p.pool_id = y.pool_id
+         LEFT JOIN tokens t0 ON t0.address = p.currency0
+         LEFT JOIN tokens t1 ON t1.address = p.currency1
+         WHERE y.passes_guards = 1 ORDER BY y.apr20 DESC LIMIT ?`,
+      )
+      .all(limit) as {
+      pool_id: string;
+      pair: string;
+      apr20: number;
+      fee_per_eth_day: number;
+      vol_eth: number | null;
+      swaps_per_h: number;
+      sym0: string | null;
+      sym1: string | null;
+    }[];
+
+    const sparkStmt = d.prepare(
+      "SELECT sqrt_price_x96 FROM pool_snapshots WHERE pool_id = ? ORDER BY ts DESC LIMIT 32",
+    );
+    return rows.map((r) => {
+      const snaps = (sparkStmt.all(r.pool_id) as { sqrt_price_x96: string }[]).reverse();
+      const spark = snaps
+        .map((s) => {
+          const sp = Number(BigInt(s.sqrt_price_x96)) / 2 ** 96;
+          return sp * sp;
+        })
+        .filter((v) => v > 0 && Number.isFinite(v));
+      const changePct =
+        spark.length >= 2 && spark[0] > 0 ? ((spark[spark.length - 1] - spark[0]) / spark[0]) * 100 : null;
+      return {
+        poolId: r.pool_id,
+        pair: r.pair,
+        sym0: r.sym0 ?? "ETH",
+        sym1: r.sym1 ?? "?",
+        apr20: r.apr20,
+        feePerEthDay: r.fee_per_eth_day,
+        volEth: r.vol_eth,
+        swapsPerH: r.swaps_per_h,
+        spark,
+        changePct,
+      };
+    });
+  } catch {
+    return [];
+  }
+}

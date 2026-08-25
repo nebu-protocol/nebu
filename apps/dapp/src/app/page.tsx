@@ -1,86 +1,119 @@
 import type { Metadata } from "next";
 
 import { Header } from "@/components/layout/header";
-import { getLpStats, getTopPools } from "@/lib/lpdata";
+import { Sparkline } from "@/components/sparkline";
+import { TokenIcon } from "@/components/token-icon";
+import { getLpStats, getPoolsTable } from "@/lib/lpdata";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
+export const dynamic = "force-dynamic";
 
 const fmtUsd = (n: number | null) =>
   n === null ? "—" : n >= 1 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
+const chg = (n: number | null) =>
+  n === null ? <span className="text-soft">—</span> : (
+    <span className={n >= 0 ? "text-emerald-600" : "text-red-600"}>
+      {n >= 0 ? "▲" : "▼"} {Math.abs(n).toFixed(1)}%
+    </span>
+  );
 
 export default function Page() {
   const stats = getLpStats();
-  const pools = getTopPools(8);
+  const pools = getPoolsTable(30);
 
   return (
     <>
       <Header />
-      <main className="mx-auto max-w-6xl px-4 py-12">
-        <section className="mb-12 max-w-2xl">
-          <h1 className="text-4xl font-semibold tracking-tight">Automated liquidity on Robinhood Chain</h1>
-          <p className="mt-3 text-soft">
-            Uniswap v4 liquidity provision, automated: survivor-pool selection, concentrated ranges,
-            and every position benchmarked against simply holding ETH.
-          </p>
-          <a
-            href="/portfolio"
-            className="mt-6 inline-block rounded-lg bg-ink px-4 py-2 font-medium text-white"
-          >
-            View portfolio →
-          </a>
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        {/* summary cards */}
+        <section className="mb-8 grid gap-4 lg:grid-cols-3">
+          <div className="rounded-2xl border border-line/60 p-5">
+            <div className="text-2xl font-semibold tracking-tight">{stats.activePools.toLocaleString()}</div>
+            <div className="text-sm text-soft">Active pools · Robinhood Chain</div>
+          </div>
+          <div className="rounded-2xl border border-line/60 p-5">
+            <div className="flex items-center gap-2 font-medium">🔥 Top APR (gross)</div>
+            <ul className="mt-3 space-y-2 text-sm">
+              {pools.slice(0, 3).map((p) => (
+                <li key={p.poolId} className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <TokenIcon symbol={p.sym1} size={20} /> {p.sym1}
+                  </span>
+                  <span className="font-medium text-emerald-600">{p.apr20.toFixed(0)}%</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-line/60 p-5">
+            <div className="flex items-center gap-2 font-medium">📈 Avg net vs HODL</div>
+            <div className="mt-3 text-2xl font-semibold">
+              {stats.avgNet === null ? "—" : `${stats.avgNet >= 0 ? "+" : ""}${stats.avgNet.toFixed(1)}%`}
+            </div>
+            <div className="text-sm text-soft">
+              {stats.positions ? `${stats.winners}/${stats.positions} beat HODL` : "menunggu data"}
+            </div>
+          </div>
         </section>
 
-        <section className="mb-12 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat label="Active pools" value={stats.activePools.toLocaleString()} />
-          <Stat label="Passing guards" value={String(stats.passingGuards)} />
-          <Stat
-            label="Avg net vs HODL"
-            value={stats.avgNet === null ? "—" : `${stats.avgNet >= 0 ? "+" : ""}${stats.avgNet.toFixed(1)}%`}
-          />
-          <Stat label="ETH price" value={fmtUsd(stats.ethUsd)} />
-        </section>
-
+        {/* pools table */}
         <section>
-          <h2 className="mb-3 text-lg font-medium">Top opportunities</h2>
-          <div className="overflow-hidden rounded-xl border border-line/60">
-            <table className="w-full text-sm">
-              <thead className="bg-shade text-soft">
+          <h2 className="mb-3 text-lg font-medium">Pools</h2>
+          <div className="overflow-x-auto rounded-2xl border border-line/60">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead className="border-line/60 border-b text-soft">
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium">Pair</th>
-                  <th className="px-4 py-2 text-right font-medium">Age (d)</th>
-                  <th className="px-4 py-2 text-right font-medium">APR ±20% (gross)</th>
+                  <th className="px-4 py-3 text-left font-medium">#</th>
+                  <th className="px-4 py-3 text-left font-medium">Pool</th>
+                  <th className="px-4 py-3 text-right font-medium">APR ±20%</th>
+                  <th className="px-4 py-3 text-right font-medium">Δ recent</th>
+                  <th className="px-4 py-3 text-right font-medium">Fee/ETH/d</th>
+                  <th className="px-4 py-3 text-right font-medium">Vol (ETH)</th>
+                  <th className="px-4 py-3 text-right font-medium">Swaps/h</th>
+                  <th className="px-4 py-3 text-right font-medium">Trend</th>
                 </tr>
               </thead>
               <tbody>
                 {pools.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="px-4 py-6 text-center text-soft">
+                    <td colSpan={8} className="px-4 py-8 text-center text-soft">
                       Belum ada data — collector sedang mengumpulkan.
                     </td>
                   </tr>
                 )}
-                {pools.map((p) => (
-                  <tr key={p.pair} className="border-t border-line/60">
-                    <td className="px-4 py-2 font-medium">{p.pair}</td>
-                    <td className="px-4 py-2 text-right">{p.age_days?.toFixed(1) ?? "?"}</td>
-                    <td className="px-4 py-2 text-right">{p.apr20.toFixed(0)}%</td>
+                {pools.map((p, i) => (
+                  <tr key={p.poolId} className="border-line/60 border-t">
+                    <td className="px-4 py-3 text-soft">{i + 1}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <TokenIcon symbol={p.sym1} size={28} />
+                        <span className="font-medium">{p.sym1}</span>
+                        <span className="text-xs text-soft">/ {p.sym0}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium">{p.apr20.toFixed(0)}%</td>
+                    <td className="px-4 py-3 text-right">{chg(p.changePct)}</td>
+                    <td className="px-4 py-3 text-right">{p.feePerEthDay.toFixed(5)}</td>
+                    <td className="px-4 py-3 text-right">{p.volEth?.toFixed(1) ?? "—"}</td>
+                    <td className="px-4 py-3 text-right">{p.swapsPerH.toFixed(0)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end">
+                        {p.spark.length >= 2 ? (
+                          <Sparkline values={p.spark} trend={(p.changePct ?? 0) >= 0 ? "up" : "down"} />
+                        ) : (
+                          <span className="text-xs text-soft">—</span>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-xs text-soft">APR gross (pre-IL). Bukan nasihat finansial.</p>
+          <p className="mt-2 text-xs text-soft">
+            APR gross (pre-IL). Δ dari time-series harga on-chain. Bukan nasihat finansial.
+          </p>
         </section>
       </main>
     </>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-line/60 p-4">
-      <div className="text-xs text-soft">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
-    </div>
   );
 }

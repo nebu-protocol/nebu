@@ -60,19 +60,15 @@ export function PortfolioClient({ siteKey }: { siteKey: string | null }) {
       setError("Wallet tidak terdeteksi. Pasang MetaMask atau wallet EVM lain.");
       return;
     }
-    if (siteKey && !tokenRef.current) {
-      setError("Selesaikan verifikasi anti-bot dulu.");
-      return;
-    }
     try {
       const [addr] = await eth.request({ method: "eth_requestAccounts" });
       if (!addr) return;
       setAddress(addr);
-      await load(addr);
+      await load(addr); // server memverifikasi Turnstile; error jelas kalau gagal
     } catch {
       setError("Koneksi wallet dibatalkan.");
     }
-  }, [load, siteKey]);
+  }, [load]);
 
   const [signing, setSigning] = useState(false);
   const signToManage = useCallback(async () => {
