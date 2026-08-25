@@ -1,5 +1,5 @@
 {
-  "name": "@sowee/dapp",
+  "name": "@lp/dapp",
   "version": "0.0.1",
   "type": "module",
   "private": true,
@@ -13,8 +13,6 @@
     "@aejkatappaja/phantom-ui": "1.6.1",
     "@dynamic-labs/ethereum": "^5.2.0",
     "@dynamic-labs/sdk-react-core": "^5.2.0",
-    "@sowee/core": "file:../../packages/core",
-    "@sowee/plugin-ats": "file:../../packages/plugin-ats",
     "@tanstack/react-query": "^5.101.4",
     "lucide-react": "^1.31.0",
     "next": "16.3.2",

@@ -21,6 +21,9 @@ echo "==> install bot"
 echo "==> install + build backoffice"
 (cd apps/backoffice && npm install --no-audit --no-fund && npx next build)
 
+echo "==> install + build dapp"
+(cd apps/dapp && npm install --no-audit --no-fund && npx next build)
+
 echo "==> backfill sekali kalau DB belum ada pools"
 if [ ! -f data/lp.db ] || [ "$(node -e "try{const{DatabaseSync}=require('node:sqlite');const d=new DatabaseSync('data/lp.db');console.log(d.prepare('SELECT COUNT(*) n FROM pools').get().n)}catch(e){console.log(0)}")" = "0" ]; then
   echo "   DB kosong — jalankan backfill (bisa ~10-20 menit)"

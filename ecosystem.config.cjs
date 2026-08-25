@@ -7,11 +7,20 @@ const DB = path.join(REPO, "data", "lp.db");
 module.exports = {
   apps: [
     {
-      name: "lp-web",
+      name: "lp-web", // backoffice (CRUD/manage) -> bo-lp.ifajar.dev
       script: "deploy/run-web.sh",
       interpreter: "bash",
       cwd: REPO,
       env: { PORT: "3015", LPBOT_DB_PATH: DB },
+      autorestart: true,
+      max_restarts: 10,
+    },
+    {
+      name: "lp-dapp", // dapp publik (LP) -> lp.ifajar.dev
+      script: "deploy/run-dapp.sh",
+      interpreter: "bash",
+      cwd: REPO,
+      env: { PORT: "3016", LPBOT_DB_PATH: DB },
       autorestart: true,
       max_restarts: 10,
     },
@@ -22,7 +31,6 @@ module.exports = {
       cwd: REPO,
       env: { DB_PATH: DB },
       autorestart: true,
-      // loop internal sudah tidur 1 jam; jangan restart-loop kalau crash cepat
       min_uptime: "60s",
       max_restarts: 10,
     },
