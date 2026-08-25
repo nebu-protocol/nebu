@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { Header } from "@/components/layout/header";
-import { Sparkline } from "@/components/sparkline";
+import { MiniLine } from "@/components/mini-line";
 import { TokenIcon } from "@/components/token-icon";
 import { getLpStats, getPoolsTable } from "@/lib/lpdata";
 
@@ -17,9 +17,9 @@ const chg = (n: number | null) =>
     </span>
   );
 
-export default function Page() {
+export default async function Page() {
   const stats = getLpStats();
-  const pools = getPoolsTable(30);
+  const pools = await getPoolsTable(30);
 
   return (
     <>
@@ -37,7 +37,7 @@ export default function Page() {
               {pools.slice(0, 3).map((p) => (
                 <li key={p.poolId} className="flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    <TokenIcon symbol={p.sym1} size={20} /> {p.sym1}
+                    <TokenIcon symbol={p.sym1} iconUrl={p.iconUrl} size={20} /> {p.sym1}
                   </span>
                   <span className="font-medium text-emerald-600">{p.apr20.toFixed(0)}%</span>
                 </li>
@@ -85,7 +85,7 @@ export default function Page() {
                     <td className="px-4 py-3 text-soft">{i + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <TokenIcon symbol={p.sym1} size={28} />
+                        <TokenIcon symbol={p.sym1} iconUrl={p.iconUrl} size={28} />
                         <span className="font-medium">{p.sym1}</span>
                         <span className="text-xs text-soft">/ {p.sym0}</span>
                       </div>
@@ -97,11 +97,7 @@ export default function Page() {
                     <td className="px-4 py-3 text-right">{p.swapsPerH.toFixed(0)}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end">
-                        {p.spark.length >= 2 ? (
-                          <Sparkline values={p.spark} trend={(p.changePct ?? 0) >= 0 ? "up" : "down"} />
-                        ) : (
-                          <span className="text-xs text-soft">—</span>
-                        )}
+                        <MiniLine values={p.spark} up={(p.changePct ?? 0) >= 0} />
                       </div>
                     </td>
                   </tr>

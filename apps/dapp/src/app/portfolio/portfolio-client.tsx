@@ -4,7 +4,6 @@ import { useCallback, useRef, useState } from "react";
 
 import { PortfolioChart } from "@/components/portfolio-chart";
 import { Sparkline } from "@/components/sparkline";
-import { TurnstileWidget } from "@/components/turnstile-widget";
 import type { HistoryPoint } from "@/components/charts/price-chart";
 
 type Position = {
@@ -25,12 +24,11 @@ const fmtUsd = (n: number | null) =>
 const pct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 const netClass = (n: number) => (n >= 0 ? "text-emerald-600" : "text-red-600");
 
-export function PortfolioClient({ siteKey }: { siteKey: string | null }) {
+export function PortfolioClient() {
   const [address, setAddress] = useState<string | null>(null);
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const tokenRef = useRef<string>("");
 
   const load = useCallback(async (addr: string) => {
     setLoading(true);
@@ -39,7 +37,7 @@ export function PortfolioClient({ siteKey }: { siteKey: string | null }) {
       const res = await fetch("/api/portfolio", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ address: addr, token: tokenRef.current }),
+        body: JSON.stringify({ address: addr }),
       });
       if (!res.ok) {
         setError((await res.json().catch(() => ({}))).error ?? "gagal memuat");
@@ -64,7 +62,7 @@ export function PortfolioClient({ siteKey }: { siteKey: string | null }) {
       const [addr] = await eth.request({ method: "eth_requestAccounts" });
       if (!addr) return;
       setAddress(addr);
-      await load(addr); // server memverifikasi Turnstile; error jelas kalau gagal
+      await load(addr);
     } catch {
       setError("Koneksi wallet dibatalkan.");
     }
@@ -90,7 +88,7 @@ export function PortfolioClient({ siteKey }: { siteKey: string | null }) {
       const vres = await fetch("/api/siwe/verify", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ address, signature, token: tokenRef.current }),
+        body: JSON.stringify({ address, signature }),
       });
       if (!vres.ok) {
         setError((await vres.json().catch(() => ({}))).error ?? "verifikasi gagal");
@@ -111,9 +109,6 @@ export function PortfolioClient({ siteKey }: { siteKey: string | null }) {
         <p className="mt-1 text-sm text-soft">
           Hubungkan wallet untuk melihat portfolio & PnL posisi kamu.
         </p>
-        <div className="mt-4 flex justify-center">
-          <TurnstileWidget siteKey={siteKey} onToken={(t) => (tokenRef.current = t)} />
-        </div>
         <button
           type="button"
           onClick={connect}

@@ -202,6 +202,7 @@ export type PoolRow = {
   pair: string;
   sym0: string;
   sym1: string;
+  iconUrl: string | null;
   apr20: number;
   feePerEthDay: number;
   volEth: number | null;
@@ -210,14 +211,33 @@ export type PoolRow = {
   changePct: number | null;
 };
 
-/** Tabel pool ala market: metrik + sparkline harga per pool (dari pool_snapshots). */
-export function getPoolsTable(limit = 30): PoolRow[] {
+const ICON_BASE = "https://robinhoodchain.blockscout.com/api/v2/tokens/";
+const iconCache = new Map<string, string | null>();
+
+/** Ambil logo asli token dari Blockscout (icon_url), cache per proses. */
+async function tokenIcon(address: string): Promise<string | null> {
+  const key = address.toLowerCase();
+  if (iconCache.has(key)) return iconCache.get(key) ?? null;
+  try {
+    const res = await fetch(`${ICON_BASE}${key}`, { signal: AbortSignal.timeout(5000) });
+    const j = (await res.json()) as { icon_url?: string | null };
+    const url = j.icon_url && /^https?:\/\//.test(j.icon_url) ? j.icon_url : null;
+    iconCache.set(key, url);
+    return url;
+  } catch {
+    iconCache.set(key, null);
+    return null;
+  }
+}
+
+/** Tabel pool ala market: metrik + sparkline + logo asli token (Blockscout). */
+export async function getPoolsTable(limit = 30): Promise<PoolRow[]> {
   try {
     const d = getDb();
     const rows = d
       .prepare(
         `SELECT y.pool_id, y.pair, y.apr20, y.fee_per_eth_day, y.vol_eth, y.swaps_per_h,
-                t0.symbol AS sym0, t1.symbol AS sym1
+                p.currency1 AS addr1, t0.symbol AS sym0, t1.symbol AS sym1
          FROM yield_rows y
          JOIN pools p ON p.pool_id = y.pool_id
          LEFT JOIN tokens t0 ON t0.address = p.currency0
@@ -231,6 +251,7 @@ export function getPoolsTable(limit = 30): PoolRow[] {
       fee_per_eth_day: number;
       vol_eth: number | null;
       swaps_per_h: number;
+      addr1: string;
       sym0: string | null;
       sym1: string | null;
     }[];
@@ -238,7 +259,8 @@ export function getPoolsTable(limit = 30): PoolRow[] {
     const sparkStmt = d.prepare(
       "SELECT sqrt_price_x96 FROM pool_snapshots WHERE pool_id = ? ORDER BY ts DESC LIMIT 32",
     );
-    return rows.map((r) => {
+    const icons = await Promise.all(rows.map((r) => tokenIcon(r.addr1)));
+    return rows.map((r, i) => {
       const snaps = (sparkStmt.all(r.pool_id) as { sqrt_price_x96: string }[]).reverse();
       const spark = snaps
         .map((s) => {
@@ -253,6 +275,7 @@ export function getPoolsTable(limit = 30): PoolRow[] {
         pair: r.pair,
         sym0: r.sym0 ?? "ETH",
         sym1: r.sym1 ?? "?",
+        iconUrl: icons[i],
         apr20: r.apr20,
         feePerEthDay: r.fee_per_eth_day,
         volEth: r.vol_eth,

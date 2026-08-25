@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { verifySiwe } from "@/server/siwe";
-import { verifyTurnstile } from "@/server/turnstile";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,11 +12,6 @@ export async function POST(req: Request) {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
-  }
-  const ip =
-    req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? undefined;
-  if (!(await verifyTurnstile(String(body.token ?? ""), ip))) {
-    return NextResponse.json({ error: "verifikasi anti-bot gagal" }, { status: 403 });
   }
   const sig = String(body.signature ?? "");
   if (!/^0x[0-9a-fA-F]+$/.test(sig)) return NextResponse.json({ error: "signature invalid" }, { status: 400 });

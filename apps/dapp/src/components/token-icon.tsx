@@ -9,20 +9,25 @@ function hash(s: string): number {
   return Math.abs(h);
 }
 
-/** Logo token kalau dikenal (public/tokens), selain itu ikon generatif per-simbol. */
-export function TokenIcon({ symbol, size = 28 }: { symbol: string; size?: number }) {
+/**
+ * Logo token: pakai logo asli (iconUrl dari Blockscout) kalau ada, lalu logo
+ * lokal token utama, terakhir ikon generatif (kalau token benar-benar tanpa logo).
+ */
+export function TokenIcon({
+  symbol,
+  iconUrl,
+  size = 28,
+}: {
+  symbol: string;
+  iconUrl?: string | null;
+  size?: number;
+}) {
   const s = symbol.toLowerCase();
-  const file = s === "weth" ? "eth" : s;
-  if (KNOWN.has(s)) {
-    // biome-ignore lint/performance/noImgElement: static token logo, no optimization needed
+  const src = iconUrl ?? (KNOWN.has(s) ? `/tokens/${s === "weth" ? "eth" : s}.png` : null);
+  if (src) {
+    // biome-ignore lint/performance/noImgElement: remote/static token logo, tiny, no optimization
     return (
-      <img
-        src={`/tokens/${file}.png`}
-        alt={symbol}
-        width={size}
-        height={size}
-        className="shrink-0 rounded-full"
-      />
+      <img src={src} alt={symbol} width={size} height={size} className="shrink-0 rounded-full object-cover" />
     );
   }
   const hue = hash(s) % 360;

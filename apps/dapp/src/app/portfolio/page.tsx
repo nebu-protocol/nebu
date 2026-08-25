@@ -4,7 +4,6 @@ import { Header } from "@/components/layout/header";
 import { PortfolioChart } from "@/components/portfolio-chart";
 import { getWalletPnlSeries, getWalletPortfolio, getWalletPositions } from "@/lib/lpdata";
 import { getSiweAddress } from "@/server/siwe";
-import { turnstileSiteKey } from "@/server/turnstile";
 import { getOwnedWallet } from "@/server/wallet-actions";
 
 import { ManagePanel } from "./manage-panel";
@@ -25,7 +24,7 @@ export default async function PortfolioPage() {
       <Header />
       <main className="mx-auto max-w-6xl px-4 py-10">
         <h1 className="mb-6 text-2xl font-semibold tracking-tight">Portfolio</h1>
-        {siwe ? <ManagedView address={siwe} /> : <PortfolioClient siteKey={turnstileSiteKey()} />}
+        {siwe ? <ManagedView address={siwe} /> : <PortfolioClient />}
         <p className="mt-4 text-xs text-soft">
           PnL untuk wallet-mu. Net vs HODL — simulasi, bukan nasihat finansial.
         </p>
