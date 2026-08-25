@@ -11,7 +11,7 @@ module.exports = {
       script: "deploy/run-web.sh",
       interpreter: "bash",
       cwd: REPO,
-      env: { PORT: "3005", LPBOT_DB_PATH: DB },
+      env: { PORT: "3015", LPBOT_DB_PATH: DB },
       autorestart: true,
       max_restarts: 10,
     },
