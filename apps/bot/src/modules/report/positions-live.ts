@@ -11,7 +11,7 @@ export async function run() {
   const db = openDb()
   const positions = db
     .prepare(
-      `SELECT id, wallet, pool_id, token_id, tick_lower, tick_upper, entry_ts
+      `SELECT id, wallet, pool_id, token_id, tick_lower, tick_upper, entry_ts, entry_cost_eth
        FROM positions WHERE status = 'OPEN' AND token_id IS NOT NULL`,
     )
     .all() as {
@@ -22,6 +22,7 @@ export async function run() {
     tick_lower: number
     tick_upper: number
     entry_ts: number
+    entry_cost_eth: number | null
   }[]
   if (!positions.length) {
     log('positions-live: tak ada posisi OPEN')
@@ -29,10 +30,12 @@ export async function run() {
   }
 
   const now = Math.floor(Date.now() / 1000)
+  // Fallback entry (posisi lama tanpa entry_cost tersimpan): HANYA CONFIRMED — swap
+  // di-record 2 baris (SENT + CONFIRMED), 'SENT'+'CONFIRMED' double-count → PnL over.
   const entryStmt = db.prepare(
     `SELECT COALESCE(SUM(amount_eth),0) s FROM executions
      WHERE wallet = ? AND pool_id = ? AND kind IN ('SWAP_IN','MINT')
-       AND status IN ('SENT','CONFIRMED') AND ts >= ?`,
+       AND status = 'CONFIRMED' AND ts >= ?`,
   )
   const upd = db.prepare(
     `UPDATE positions SET cur_value_eth=?, entry_cost_eth=?, fees_eth=?, net_pct=?, fees_pct=?, il_pct=?,
@@ -54,7 +57,12 @@ export async function run() {
         log(`positions-live: pos#${p.id} liquidity 0 (skip)`) // mungkin sudah ditutup di luar
         continue
       }
-      const entry = ((entryStmt.get(p.wallet, p.pool_id, p.entry_ts - 120) as { s: number }).s || 0)
+      // Pakai entry_cost EKSAK yg diseed saat mint (akurat); fallback ke window
+      // CONFIRMED utk posisi lama yg belum punya nilai tersimpan.
+      const entry =
+        p.entry_cost_eth && p.entry_cost_eth > 0
+          ? p.entry_cost_eth
+          : (entryStmt.get(p.wallet, p.pool_id, p.entry_ts - 120) as { s: number }).s || 0
       const netPct = entry > 0 ? ((v.valueEth - entry) / entry) * 100 : 0
       const feesPct = entry > 0 ? (v.feesEth / entry) * 100 : 0
       const ilPct = entry > 0 ? ((v.principalEth - entry) / entry) * 100 : 0

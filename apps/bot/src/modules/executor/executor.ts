@@ -509,13 +509,14 @@ export async function run() {
             toTok(m.amount1, pool.currency1))
           if (m.status === 'success')
             db.prepare(
-              // Seed PnL 0 di entry (net vs HODL = 0 saat baru masuk) → UI langsung
-              // tampil 0.00%, bukan "—", sebelum positions-live hitung nilai nyata.
+              // Seed PnL 0 + entry_cost EKSAK (plan.totalEth) di mint → UI tampil 0.00%
+              // langsung, DAN entry_cost akurat (bukan tebakan window executions yg
+              // double-count swap SENT+CONFIRMED → PnL rugi ke-over-count).
               `INSERT INTO positions (wallet, pool_id, token_id, tick_lower, tick_upper, liquidity, entry_ts, status,
-                 net_pct, fees_pct, il_pct, peak_net_pct, pnl_ts)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', 0, 0, 0, 0, ?)`,
+                 net_pct, fees_pct, il_pct, peak_net_pct, pnl_ts, entry_cost_eth, cur_value_eth)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', 0, 0, 0, 0, ?, ?, ?)`,
             ).run(w.address, plan.poolId, m.tokenId ? m.tokenId.toString() : null,
-              m.tickLower, m.tickUpper, m.liquidity.toString(), now, now)
+              m.tickLower, m.tickUpper, m.liquidity.toString(), now, now, plan.totalEth, plan.totalEth)
           log(`MINT ${m.status} ${m.hash} tokenId=${m.tokenId}`)
         } catch (e) {
           // Gagal di PREFLIGHT / setup (belum kirim tx) → SKIP bersih, bukan FAILED.
