@@ -19,6 +19,7 @@ function row(overrides: Partial<YieldRow>): YieldRow {
     poolId: '0xok',
     widthFactor: 1.2,
     momentumPct: 0,
+    tvlTrendPct: 5,
     ...overrides,
   }
 }
@@ -114,4 +115,22 @@ test('decide: hurdle LVR — pool volatil (widthFactor tinggi) butuh APR lebih t
 test('decide: momentum default 0 — dump ringan (-1%) pun ditolak (LP cuma untung saat uptrend)', () => {
   const out = decide([row({ poolId: '0xslightdown', momentumPct: -1 })], cfg, { paused: false, held: [] })
   assert.equal(out.length, 0)
+})
+
+test('decide: anti-extension — pump vertikal (>40%) ditolak (ilikuid mean-revert)', () => {
+  const out = decide([row({ poolId: '0xvertical', apr20: 300, momentumPct: 80 })], cfg, { paused: false, held: [] })
+  assert.equal(out.length, 0)
+})
+
+test('decide: TVL ambruk — likuiditas ditarik (<-20%) ditolak (sinyal rug)', () => {
+  const out = decide([row({ poolId: '0xrug', apr20: 300, momentumPct: 5, tvlTrendPct: -50 })], cfg, { paused: false, held: [] })
+  assert.equal(out.length, 0)
+})
+
+test('decide: uptrend moderat + TVL naik → lolos ENTER', () => {
+  const out = decide([row({ poolId: '0xgood', apr20: 300, momentumPct: 10, tvlTrendPct: 30 })], cfg, { paused: false, held: [] })
+  assert.deepEqual(
+    out.map((d) => [d.action, d.poolId]),
+    [['ENTER', '0xgood']],
+  )
 })

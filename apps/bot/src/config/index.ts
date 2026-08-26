@@ -68,6 +68,10 @@ export const EXIT = {
 // lebih panjang = tak gampang beli-ulang token yg baru dump.
 export const REENTRY_COOLDOWN_S = Number(process.env.REENTRY_COOLDOWN_H ?? 6) * 3600
 
+// Time-stop: tutup posisi yg > ini jam TAPI tak pernah "arm" take-profit (momentum tak
+// muncul). Riset: momentum crypto decay cepat + LP diam = bleed LVR (negative carry).
+export const MAX_HOLD_HOURS = Number(process.env.EXIT_MAX_HOLD_H ?? 48)
+
 export const SCAN = {
   /** getLogs chunk sizing — adaptive: halve on RPC error, grow on quiet ranges. */
   initialChunk: 200_000n,

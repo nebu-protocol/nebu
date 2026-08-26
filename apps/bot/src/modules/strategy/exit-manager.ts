@@ -4,7 +4,7 @@ import { client } from '../../core/chain.ts'
 import { decryptSecret } from '../../core/crypto.ts'
 import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
-import { ADDRESSES, EXIT } from '../../config/index.ts'
+import { ADDRESSES, EXIT, MAX_HOLD_HOURS } from '../../config/index.ts'
 import { burnLive, swapToEthLive } from '../executor/live.ts'
 import { resolveExitCfg } from './risk.ts'
 
@@ -70,6 +70,7 @@ type Row = {
   tick_upper: number
   net_pct: number | null
   peak_net_pct: number | null
+  entry_ts: number
   currency0: string
   currency1: string
   fee: number
@@ -93,7 +94,7 @@ export async function run() {
   const secret = process.env.LPBOT_KEY_SECRET
   const positions = db
     .prepare(
-      `SELECT p.id, p.wallet, p.pool_id, p.token_id, p.tick_lower, p.tick_upper, p.net_pct, p.peak_net_pct,
+      `SELECT p.id, p.wallet, p.pool_id, p.token_id, p.tick_lower, p.tick_upper, p.net_pct, p.peak_net_pct, p.entry_ts,
               po.currency0, po.currency1, po.fee, po.tick_spacing, po.hooks, w.enc_pk,
               w.risk_profile, w.risk_stop_loss, w.risk_price_stop, w.risk_tp_arm, w.risk_tp_trail
        FROM positions p
@@ -122,7 +123,13 @@ export async function run() {
     } catch {
       continue // gagal baca harga — jangan ambil keputusan
     }
-    const reason = exitReason(p.net_pct, p.peak_net_pct, tick, p.tick_lower, p.tick_upper, resolveExitCfg(p))
+    const cfg = resolveExitCfg(p)
+    let reason = exitReason(p.net_pct, p.peak_net_pct, tick, p.tick_lower, p.tick_upper, cfg)
+    // Time-stop: posisi tua yg tak pernah arm take-profit → momentum tak muncul, cuma
+    // bleed LVR → tutup & recycle modal ke lottery-ticket baru.
+    const ageH = (Math.floor(Date.now() / 1000) - p.entry_ts) / 3600
+    if (!reason && ageH >= MAX_HOLD_HOURS && (p.peak_net_pct ?? 0) < cfg.takeProfitArmPct)
+      reason = `time-stop ${ageH.toFixed(0)}h (momentum tak muncul, recycle)`
     if (!reason) continue
     log(`EXIT ${p.pool_id.slice(0, 10)} pos#${p.id}: ${reason}`)
 

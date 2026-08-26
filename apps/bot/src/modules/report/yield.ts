@@ -16,6 +16,7 @@ export type SnapPoint = {
   sqrt_price_x96: string
   fee_growth0: string
   fee_growth1: string
+  liquidity?: string
 }
 
 export type AprResult = { aprPct: number; feePerEthPerDay: number }
@@ -80,6 +81,8 @@ export type YieldRow = {
   widthFactor: number
   /** Perubahan harga token (%) sepanjang window snapshot — filter momentum entry. */
   momentumPct: number
+  /** Tren likuiditas/TVL (%) first→last — prediktor dump terkuat; gate entry. */
+  tvlTrendPct: number
 }
 
 /**
@@ -124,7 +127,7 @@ export function computeYields(
   const cutoff = nowS - 86_400
   const snaps = db
     .prepare(
-      `SELECT pool_id, ts, sqrt_price_x96, fee_growth0, fee_growth1
+      `SELECT pool_id, ts, sqrt_price_x96, fee_growth0, fee_growth1, liquidity
        FROM pool_snapshots WHERE ts >= ? ORDER BY pool_id, ts`,
     )
     .all(cutoff) as (SnapPoint & { pool_id: string })[]
@@ -168,6 +171,11 @@ export function computeYields(
       const p0 = (Number(BigInt(fl.first.sqrt_price_x96)) / 2 ** 96) ** 2
       const p1 = (Number(BigInt(fl.last.sqrt_price_x96)) / 2 ** 96) ** 2
       const momentumPct = p0 > 0 ? ((p1 - p0) / p0) * 100 : 0
+      // Tren TVL/likuiditas first→last (%). Riset: prediktor dump TERKUAT (AUC ~0.89) —
+      // TVL turun = likuiditas ditarik / rug; TVL naik = demand nyata → continuation.
+      const l0 = fl.first.liquidity ? Number(BigInt(fl.first.liquidity)) : 0
+      const l1 = fl.last.liquidity ? Number(BigInt(fl.last.liquidity)) : 0
+      const tvlTrendPct = l0 > 0 ? ((l1 - l0) / l0) * 100 : 0
       return {
         pair: `ETH/${m.sym1 ?? '?'}`,
         ageDays: m.created_at ? (nowS - m.created_at) / 86400 : null,
@@ -181,6 +189,7 @@ export function computeYields(
         poolId: m.pool_id,
         widthFactor: width,
         momentumPct,
+        tvlTrendPct,
       }
     })
     .filter((r) => r !== null)

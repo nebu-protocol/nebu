@@ -12,6 +12,8 @@ export type StrategyConfig = {
   widthFactor: number // lebar range posisi (1.2 = ±~20%)
   requireNoHook: boolean
   momentumMinPct: number // tolak entry kalau harga token turun > ini (hindari LP token dump)
+  momentumMaxPct: number // tolak entry kalau sudah pump vertikal > ini (mean-revert → beli puncak)
+  tvlTrendMinPct: number // tolak entry kalau TVL turun > ini (likuiditas ditarik / rug)
 }
 
 export const DEFAULT_STRATEGY: StrategyConfig = {
@@ -24,6 +26,11 @@ export const DEFAULT_STRATEGY: StrategyConfig = {
   // NAIK, bleed di downtrend/chop. Jadi entry HANYA token yg tak turun (momentum ≥ 0).
   // Sebelumnya -8 (masih izinkan dump ringan) → sumber utama "PnL turun drastis".
   momentumMinPct: Number(process.env.MOMENTUM_MIN_PCT ?? 0),
+  // Riset entry (arXiv/sciencedirect): token ILIKUID MEAN-REVERT jangka pendek — beli
+  // candle vertikal = beli puncak → dump. Tolak pump ekstrem; masuk uptrend moderat saja.
+  momentumMaxPct: Number(process.env.MOMENTUM_MAX_PCT ?? 40),
+  // Tren TVL prediktor dump TERKUAT (AUC ~0.89): tolak pool yg likuiditasnya ambruk.
+  tvlTrendMinPct: Number(process.env.TVL_TREND_MIN_PCT ?? -20),
 }
 
 export type PortfolioState = {
@@ -51,6 +58,12 @@ function passesGates(r: YieldRow, cfg: StrategyConfig): string | null {
   // Momentum: cuma masuk token yg tak lagi turun — LP downtrend = IL besar tanpa fee.
   if (r.momentumPct < cfg.momentumMinPct)
     return `downtrend ${r.momentumPct.toFixed(1)}% < ${cfg.momentumMinPct}%`
+  // Anti-extension: token ilikuid mean-revert → jangan kejar pump vertikal (beli puncak).
+  if (r.momentumPct > cfg.momentumMaxPct)
+    return `over-extended ${r.momentumPct.toFixed(1)}% > ${cfg.momentumMaxPct}% (mean-revert)`
+  // TVL ambruk = likuiditas ditarik / rug → jangan masuk.
+  if (r.tvlTrendPct < cfg.tvlTrendMinPct)
+    return `TVL ambruk ${r.tvlTrendPct.toFixed(1)}% < ${cfg.tvlTrendMinPct}%`
   return null
 }
 
