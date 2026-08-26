@@ -14,14 +14,29 @@ import {
  * Chart portfolio LP: seri {timestamp,value} (mis. ETH/USD dari snapshot on-chain),
  * dengan tab rentang. Logic chart di sini (client); data dibaca server dari lp.db.
  */
+/** $ besar dgn desimal abu-abu (ala Ondo). */
+function BigUsd({ n }: { n: number }) {
+  const [int, dec] = n
+    .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    .split(".");
+  return (
+    <span className="text-3xl font-semibold tracking-tight sm:text-4xl">
+      ${int}
+      <span className="text-soft">.{dec}</span>
+    </span>
+  );
+}
+
 export function PortfolioChart({
   points,
   label,
   unit = "%",
+  headerValue = null,
 }: {
   points: HistoryPoint[];
   label: string;
   unit?: "%" | "$";
+  headerValue?: number | null;
 }) {
   const [range, setRange] = useState<ChartRange>("ALL");
 
@@ -42,9 +57,16 @@ export function PortfolioChart({
         : "down";
 
   return (
-    <div className="rounded-xl border border-line/60 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-medium">{label}</span>
+    <div className="rounded-2xl border border-line/60 p-5">
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div>
+          {headerValue != null ? (
+            <BigUsd n={headerValue} />
+          ) : (
+            <span className="text-sm font-medium">{label}</span>
+          )}
+          {headerValue != null && <div className="mt-0.5 text-xs text-soft">{label}</div>}
+        </div>
         <RangeTabs value={range} onChange={setRange} />
       </div>
       {filtered.length < 2 ? (

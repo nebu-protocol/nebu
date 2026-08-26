@@ -107,6 +107,16 @@ CREATE TABLE IF NOT EXISTS pnl_history (
   PRIMARY KEY (pool_id, ts)
 );
 
+-- Riwayat PnL NYATA agregat per wallet (append tiap siklus positions-live) — chart dapp
+CREATE TABLE IF NOT EXISTS wallet_pnl_hist (
+  wallet    TEXT NOT NULL,
+  ts        INTEGER NOT NULL,
+  value_eth REAL NOT NULL,
+  entry_eth REAL NOT NULL,
+  net_pct   REAL NOT NULL,
+  PRIMARY KEY (wallet, ts)
+);
+
 -- PnL posisi (simulasi) vs HODL — dibaca backoffice
 CREATE TABLE IF NOT EXISTS positions_pnl (
   pool_id          TEXT PRIMARY KEY,
@@ -163,12 +173,23 @@ export function openDb(path: string = DB_PATH): DatabaseSync {
   mkdirSync(dirname(path), { recursive: true })
   const db = new DatabaseSync(path)
   db.exec('PRAGMA journal_mode = WAL')
+  db.exec('PRAGMA busy_timeout = 8000') // tunggu lock (collector + step manual bisa bentrok)
   db.exec(SCHEMA)
   // migrasi kolom baru untuk DB lama (aman kalau kolom sudah ada)
   for (const stmt of [
     "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'viewer'",
     'ALTER TABLE users ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0',
     'ALTER TABLE wallets ADD COLUMN owner TEXT',
+    // PnL NYATA on-chain per posisi (diisi report/positions-live.ts tiap siklus)
+    'ALTER TABLE positions ADD COLUMN cur_value_eth REAL',
+    'ALTER TABLE positions ADD COLUMN entry_cost_eth REAL',
+    'ALTER TABLE positions ADD COLUMN fees_eth REAL',
+    'ALTER TABLE positions ADD COLUMN net_pct REAL',
+    'ALTER TABLE positions ADD COLUMN fees_pct REAL',
+    'ALTER TABLE positions ADD COLUMN il_pct REAL',
+    'ALTER TABLE positions ADD COLUMN pnl_ts INTEGER',
+    // jumlah token1 (leg non-ETH) untuk aktivitas — human-readable
+    'ALTER TABLE executions ADD COLUMN amount_token1 REAL',
   ]) {
     try {
       db.exec(stmt)

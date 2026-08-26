@@ -49,6 +49,26 @@ export function liquidityForAmount1(sqrtA: bigint, sqrtB: bigint, amount1: bigin
 }
 
 /**
+ * Amount0 & amount1 dari L pada harga sekarang (inverse: LiquidityAmounts.getAmountsForLiquidity).
+ * Dipakai untuk menilai posisi OPEN (berapa token0/token1 kalau ditarik sekarang).
+ */
+export function amountsForLiquidity(
+  sqrtP: bigint,
+  sqrtA: bigint,
+  sqrtB: bigint,
+  L: bigint,
+): { amount0: bigint; amount1: bigint } {
+  const [lo, hi] = sqrtA < sqrtB ? [sqrtA, sqrtB] : [sqrtB, sqrtA]
+  if (hi === lo || L <= 0n) return { amount0: 0n, amount1: 0n }
+  if (sqrtP <= lo) return { amount0: (L * Q96 * (hi - lo)) / (lo * hi), amount1: 0n }
+  if (sqrtP >= hi) return { amount0: 0n, amount1: (L * (hi - lo)) / Q96 }
+  return {
+    amount0: (L * Q96 * (hi - sqrtP)) / (sqrtP * hi),
+    amount1: (L * (sqrtP - lo)) / Q96,
+  }
+}
+
+/**
  * L maksimum dari kedua amount pada harga sekarang. Jika harga di dalam range,
  * L = min(L0, L1); di luar range hanya satu sisi yang relevan.
  */

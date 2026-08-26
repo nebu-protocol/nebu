@@ -76,6 +76,37 @@ export type YieldRow = {
   hook: string
   spanMin: number
   poolId: string
+  /** Lebar range auto dari volatilitas pool (1.2 = ±~20%). Dipakai strategist. */
+  widthFactor: number
+  /** Perubahan harga token (%) sepanjang window snapshot — filter momentum entry. */
+  momentumPct: number
+}
+
+/**
+ * Auto-range: lebar posisi mengikuti volatilitas. Pool volatil → range lebih lebar
+ * (mengurangi risiko keluar range & IL); stabil → sempit (fee lebih padat).
+ * vol = stdev return antar-snapshot. ponytail: linear + clamp; upgrade: model per-regime.
+ */
+export function autoWidthFactor(vol: number): number {
+  const w = 1 + 6 * vol // 1% vol -> +0.06 lebar
+  return Math.max(1.05, Math.min(2.5, w))
+}
+
+/** Stdev return harga antar-snapshot dari seri sqrtPrice. */
+function priceVolatility(series: SnapPoint[]): number {
+  if (series.length < 3) return 0
+  const prices = series.map((s) => {
+    const sp = Number(BigInt(s.sqrt_price_x96)) / 2 ** 96
+    return sp * sp
+  })
+  const rets: number[] = []
+  for (let i = 1; i < prices.length; i++) {
+    if (prices[i - 1]! > 0) rets.push(prices[i]! / prices[i - 1]! - 1)
+  }
+  if (rets.length < 2) return 0
+  const mean = rets.reduce((a, b) => a + b, 0) / rets.length
+  const varc = rets.reduce((a, b) => a + (b - mean) ** 2, 0) / rets.length
+  return Math.sqrt(varc)
 }
 
 /** Guard anti-noise — dipakai report & strategist. */
@@ -99,10 +130,14 @@ export function computeYields(
     .all(cutoff) as (SnapPoint & { pool_id: string })[]
 
   const firstLast = new Map<string, { first: SnapPoint; last: SnapPoint }>()
+  const seriesByPool = new Map<string, SnapPoint[]>()
   for (const s of snaps) {
     const e = firstLast.get(s.pool_id)
     if (!e) firstLast.set(s.pool_id, { first: s, last: s })
     else e.last = s
+    const arr = seriesByPool.get(s.pool_id)
+    if (arr) arr.push(s)
+    else seriesByPool.set(s.pool_id, [s])
   }
 
   const metas = db
@@ -124,10 +159,15 @@ export function computeYields(
     .map((m): YieldRow | null => {
       const fl = firstLast.get(m.pool_id)
       if (!fl || fl.first.ts === fl.last.ts) return null
-      const wide = projectApr(fl.first, fl.last, 1.2) // ±~20%
+      const width = autoWidthFactor(priceVolatility(seriesByPool.get(m.pool_id) ?? []))
+      const wide = projectApr(fl.first, fl.last, width) // range auto dari volatilitas
       const tight = projectApr(fl.first, fl.last, 1.05) // ±~5%
       if (!wide || wide.aprPct <= 0) return null
       const hours = m.window_s ? m.window_s / 3600 : null
+      // Momentum: perubahan harga token (%) first→last (price = sqrtP²).
+      const p0 = (Number(BigInt(fl.first.sqrt_price_x96)) / 2 ** 96) ** 2
+      const p1 = (Number(BigInt(fl.last.sqrt_price_x96)) / 2 ** 96) ** 2
+      const momentumPct = p0 > 0 ? ((p1 - p0) / p0) * 100 : 0
       return {
         pair: `ETH/${m.sym1 ?? '?'}`,
         ageDays: m.created_at ? (nowS - m.created_at) / 86400 : null,
@@ -139,6 +179,8 @@ export function computeYields(
         hook: m.hooks === NATIVE ? '-' : m.hooks.slice(0, 10),
         spanMin: (fl.last.ts - fl.first.ts) / 60,
         poolId: m.pool_id,
+        widthFactor: width,
+        momentumPct,
       }
     })
     .filter((r) => r !== null)

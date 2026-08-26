@@ -17,21 +17,39 @@ function row(overrides: Partial<YieldRow>): YieldRow {
     hook: '-',
     spanMin: 60,
     poolId: '0xok',
+    widthFactor: 1.2,
+    momentumPct: 0,
     ...overrides,
   }
 }
 
-test('decide: gate menolak pool muda, ber-hook, dan APR rendah', () => {
+test('decide: gate menolak pool muda, ber-hook, APR rendah, dan token dump', () => {
   const out = decide(
     [
       row({ poolId: '0xyoung', ageDays: 1 }),
       row({ poolId: '0xhooked', hook: '0xdeadbeef' }),
       row({ poolId: '0xlowapr', apr20: 10 }),
+      row({ poolId: '0xdump', momentumPct: -25 }), // token lagi dump → tolak
     ],
     cfg,
     { paused: false, held: [] },
   )
   assert.equal(out.length, 0)
+})
+
+test('decide: momentum — token naik masuk, token turun tajam ditolak', () => {
+  const out = decide(
+    [
+      row({ poolId: '0xup', apr20: 200, momentumPct: 5 }),
+      row({ poolId: '0xdown', apr20: 500, momentumPct: -30 }), // APR tinggi TAPI dump → skip
+    ],
+    { ...cfg, momentumMinPct: -8 },
+    { paused: false, held: [] },
+  )
+  assert.deepEqual(
+    out.map((d) => d.poolId),
+    ['0xup'],
+  )
 })
 
 test('decide: ENTER maksimal maxPools, urut APR tertinggi', () => {

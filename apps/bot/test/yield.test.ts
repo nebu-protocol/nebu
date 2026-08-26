@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { projectApr, type SnapPoint } from '../src/modules/report/yield.ts'
+import { autoWidthFactor, projectApr, type SnapPoint } from '../src/modules/report/yield.ts'
 
 const Q96 = 2n ** 96n
 const Q128 = 2n ** 128n
@@ -54,4 +54,11 @@ test('projectApr: tanpa fee growth -> APR 0, bukan error', () => {
   const r = projectApr(a, b, 1.2)
   assert.ok(r)
   assert.equal(r.aprPct, 0)
+})
+
+test('autoWidthFactor: monoton naik terhadap volatilitas, ter-clamp [1.05, 2.5]', () => {
+  assert.ok(autoWidthFactor(0) >= 1.05) // pool tenang -> range minimum
+  assert.ok(autoWidthFactor(0.05) > autoWidthFactor(0.01)) // makin volatil -> makin lebar
+  assert.equal(autoWidthFactor(10), 2.5) // ekstrem -> clamp atas, tak meledak
+  assert.ok(autoWidthFactor(-1) >= 1.05) // input aneh tetap valid buat projectApr (>1)
 })

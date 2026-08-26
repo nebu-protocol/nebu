@@ -46,6 +46,23 @@ test('planEntries: cap fund_eth x fraction dan max_per_pool_eth', () => {
   assert.equal(plans[0]!.swapEth, 0.25)
 })
 
+test('planEntries: minEth floor (rebalance minimal) + sadar-budget', () => {
+  const enters = [
+    { poolId: '0xa', sizeFraction: 0.33 },
+    { poolId: '0xb', sizeFraction: 0.33 },
+    { poolId: '0xc', sizeFraction: 0.33 },
+  ]
+  // fund kecil ($ ~ minEth): frac-size di bawah floor -> dinaikkan ke minEth,
+  // tapi budget cuma cukup 1 posisi (0.01), sisanya di-skip.
+  const plans = planEntries(enters, { fund_eth: 0.01, max_per_pool_eth: 0, autoswap: 1 }, 0.01)
+  assert.equal(plans.length, 1)
+  assert.equal(plans[0]!.totalEth, 0.01)
+  // max_per_pool 0 = tanpa cap: 3 posisi @0.01 muat di fund 0.05
+  assert.equal(planEntries(enters, { fund_eth: 0.05, max_per_pool_eth: 0, autoswap: 1 }, 0.01).length, 3)
+  // fund di bawah 1 posisi minimal -> tak ada plan
+  assert.equal(planEntries(enters, { fund_eth: 0.005, max_per_pool_eth: 0, autoswap: 1 }, 0.01).length, 0)
+})
+
 test('planEntries: autoswap off -> swapEth 0; fund 0 -> tidak ada plan', () => {
   const enters = [{ poolId: '0xa', sizeFraction: 0.5 }]
   assert.equal(planEntries(enters, { fund_eth: 1, max_per_pool_eth: 1, autoswap: 0 })[0]!.swapEth, 0)

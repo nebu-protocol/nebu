@@ -75,12 +75,14 @@ test('db+yield: materializeYields mengganti isi tabel (kontrak baca backoffice)'
   const db = tmpDb()
   const mk = (poolId: string, apr20: number, volEth: number): YieldRow => ({
     pair: 'ETH/X', ageDays: 10, apr20, apr5: apr20 * 3, feePerEthDay: 0.01,
-    volEth, swapsPerH: 60, hook: '-', spanMin: 60, poolId,
+    volEth, swapsPerH: 60, hook: '-', spanMin: 60, poolId, widthFactor: 1.2, momentumPct: 0,
   })
   materializeYields(db, [mk('0xa', 100, 50), mk('0xb', 200, 1)]) // 0xb gagal guard vol
   // node:sqlite mengembalikan row ber-prototype null — spread agar deepEqual apple-to-apple
-  let rows = (db.prepare('SELECT pool_id, passes_guards FROM yield_rows ORDER BY pool_id').all() as
-    { pool_id: string; passes_guards: number }[]).map((r) => ({ ...r }))
+  let rows: { pool_id: string; passes_guards?: number }[] = (
+    db.prepare('SELECT pool_id, passes_guards FROM yield_rows ORDER BY pool_id').all() as
+      { pool_id: string; passes_guards: number }[]
+  ).map((r) => ({ ...r }))
   assert.deepEqual(rows, [
     { pool_id: '0xa', passes_guards: 1 },
     { pool_id: '0xb', passes_guards: 0 },

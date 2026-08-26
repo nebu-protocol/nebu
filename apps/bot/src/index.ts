@@ -8,9 +8,13 @@ const commands: Record<string, () => Promise<{ run: (args: string[]) => Promise<
   rank: () => import('./modules/report/rank.ts'),
   yield: () => import('./modules/report/yield.ts'),
   pnl: () => import('./modules/report/pnl.ts'),
+  'positions-live': () => import('./modules/report/positions-live.ts'),
+  'exit-manager': () => import('./modules/strategy/exit-manager.ts'),
   price: () => import('./modules/price/ethusd.ts'),
   plan: () => import('./modules/strategy/plan.ts'),
   execute: () => import('./modules/executor/executor.ts'),
+  withdraw: () => import('./modules/wallet/withdraw.ts'),
+  close: () => import('./modules/wallet/close.ts'),
   user: () => import('./modules/auth/users.ts'),
 }
 

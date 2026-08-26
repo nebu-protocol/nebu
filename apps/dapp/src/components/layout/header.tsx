@@ -1,12 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
-const BACKOFFICE_URL = process.env.NEXT_PUBLIC_BACKOFFICE_URL ?? "https://bo-lp.ifajar.dev";
-
-const NAV = [
-  { href: "/", label: "Overview" },
-  { href: "/portfolio", label: "Portfolio" },
-];
+import { NavLinks } from "./nav-links";
+import { WalletButton } from "./wallet-button";
 
 export function Header() {
   return (
@@ -17,20 +13,17 @@ export function Header() {
             <Image src="/lp-logo.png" alt="LP Bot" width={24} height={24} className="size-6 rounded-md" />
             LP Bot
           </Link>
-          <nav className="hidden gap-4 text-sm text-soft sm:flex">
-            {NAV.map((n) => (
-              <Link key={n.href} href={n.href} className="hover:text-ink">
-                {n.label}
-              </Link>
-            ))}
-          </nav>
+          <NavLinks />
         </div>
-        <a
-          href={BACKOFFICE_URL}
-          className="rounded-lg bg-ink px-3 py-1.5 text-sm font-medium text-white"
-        >
-          Dashboard
-        </a>
+        <div className="flex items-center gap-2">
+          <span
+            title="Robinhood Chain"
+            className="hidden h-8 w-8 items-center justify-center rounded-lg border border-line/60 sm:flex"
+          >
+            <Image src="/robinhood-chain.png" alt="Robinhood Chain" width={18} height={18} className="rounded-full" />
+          </span>
+          <WalletButton />
+        </div>
       </div>
     </header>
   );

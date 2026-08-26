@@ -37,6 +37,22 @@ export const ADDRESSES = {
 
 export const NATIVE = '0x0000000000000000000000000000000000000000'
 
+/** Ukuran minimal per posisi/rebalance dalam USD (default $1) — hindari dust. */
+export const MIN_POSITION_USD = Number(process.env.MIN_POSITION_USD ?? 1)
+
+/**
+ * Manajemen exit LP — PnL pool meme DIDOMINASI harga token (bukan fee), jadi kunci
+ * cuan/anti-rugi adalah KAPAN keluar:
+ *  - stopLoss: potong rugi sebelum token dump makin dalam.
+ *  - takeProfit: kunci untung sebelum pump balik arah.
+ *  - out-of-range: posisi di luar range = 0 fee + full IL (dana mati) → keluar.
+ * ponytail: ambang tetap; nanti bisa adaptif per-volatilitas.
+ */
+export const EXIT = {
+  stopLossPct: Number(process.env.EXIT_STOP_LOSS ?? -15), // net vs HODL <= ini → keluar
+  takeProfitPct: Number(process.env.EXIT_TAKE_PROFIT ?? 40), // net vs HODL >= ini → keluar
+}
+
 export const SCAN = {
   /** getLogs chunk sizing — adaptive: halve on RPC error, grow on quiet ranges. */
   initialChunk: 200_000n,

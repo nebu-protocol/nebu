@@ -13,7 +13,13 @@ export async function run() {
   const all = computeYields(db)
   materializeYields(db, all) // refresh kontrak baca backoffice
   const candidates = all.filter(passesGuards)
-  const state = { paused: getMeta(db, 'paused') === '1', held: [] as string[] }
+  // held = pool dgn posisi OPEN nyata (token_id) → strategist bisa HOLD/EXIT, bukan cuma ENTER.
+  const held = (
+    db
+      .prepare("SELECT DISTINCT pool_id FROM positions WHERE status = 'OPEN' AND token_id IS NOT NULL")
+      .all() as { pool_id: string }[]
+  ).map((r) => r.pool_id)
+  const state = { paused: getMeta(db, 'paused') === '1', held }
   const decisions = decide(candidates, DEFAULT_STRATEGY, state)
 
   if (state.paused) {

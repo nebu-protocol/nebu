@@ -2,58 +2,65 @@ import type { Metadata } from "next";
 
 import { Header } from "@/components/layout/header";
 import { MiniLine } from "@/components/mini-line";
+import { Sparkline } from "@/components/sparkline";
 import { TokenIcon } from "@/components/token-icon";
-import { getLpStats, getPoolsTable } from "@/lib/lpdata";
+import { WelcomeCard } from "@/components/welcome-card";
+import { getPoolsTable } from "@/lib/lpdata";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 export const dynamic = "force-dynamic";
 
 const fmtUsd = (n: number | null) =>
   n === null ? "—" : n >= 1 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
+// Persen: separator ribuan + maks 2 desimal.
+const fmtPct = (n: number, dp = 2) =>
+  n.toLocaleString(undefined, { maximumFractionDigits: dp });
 const chg = (n: number | null) =>
   n === null ? <span className="text-soft">—</span> : (
     <span className={n >= 0 ? "text-emerald-600" : "text-red-600"}>
-      {n >= 0 ? "▲" : "▼"} {Math.abs(n).toFixed(1)}%
+      {n >= 0 ? "▲" : "▼"} {fmtPct(Math.abs(n))}%
     </span>
   );
 
 export default function Page() {
-  const stats = getLpStats();
   const pools = getPoolsTable(30);
 
   return (
     <>
       <Header />
       <main className="mx-auto max-w-6xl px-4 py-8">
-        {/* summary cards */}
-        <section className="mb-8 grid gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl border border-line/60 p-5">
-            <div className="text-2xl font-semibold tracking-tight">{stats.activePools.toLocaleString()}</div>
-            <div className="text-sm text-soft">Active pools · Robinhood Chain</div>
-          </div>
-          <div className="rounded-2xl border border-line/60 p-5">
-            <div className="flex items-center gap-2 font-medium">🔥 Top APR (gross)</div>
-            <ul className="mt-3 space-y-2 text-sm">
-              {pools.slice(0, 3).map((p) => (
-                <li key={p.poolId} className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <TokenIcon symbol={p.sym1} address={p.address} size={20} /> {p.sym1}
-                  </span>
-                  <span className="font-medium text-emerald-600">{p.apr20.toFixed(0)}%</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="rounded-2xl border border-line/60 p-5">
-            <div className="flex items-center gap-2 font-medium">📈 Avg net vs HODL</div>
-            <div className="mt-3 text-2xl font-semibold">
-              {stats.avgNet === null ? "—" : `${stats.avgNet >= 0 ? "+" : ""}${stats.avgNet.toFixed(1)}%`}
-            </div>
-            <div className="text-sm text-soft">
-              {stats.positions ? `${stats.winners}/${stats.positions} beat HODL` : "menunggu data"}
-            </div>
-          </div>
+        {/* portfolio card (ala Ondo) */}
+        <section className="mb-8">
+          <WelcomeCard />
         </section>
+
+        {/* top pools cards (ala Ondo asset cards) */}
+        {pools.length > 0 && (
+          <section className="mb-8">
+            <h2 className="mb-3 text-lg font-medium">Top pools</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {pools.slice(0, 4).map((p) => (
+                <div key={p.poolId} className="overflow-hidden rounded-2xl border border-line/60 p-4">
+                  <div className="flex items-center gap-2">
+                    <TokenIcon symbol={p.sym1} address={p.address} size={32} />
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{p.sym1}</div>
+                      <div className="text-xs text-soft">/ ETH</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-1.5">
+                    <span className="text-2xl font-semibold tracking-tight">{fmtPct(p.apr20, 0)}%</span>
+                    <span className="text-xs text-soft">APR</span>
+                  </div>
+                  <div className="text-xs">{chg(p.changePct)}</div>
+                  <div className="mt-3 h-14">
+                    <Sparkline values={p.spark} trend={(p.changePct ?? 0) >= 0 ? "up" : "down"} animate={false} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* pools table */}
         <section>
@@ -90,7 +97,7 @@ export default function Page() {
                         <span className="text-xs text-soft">/ {p.sym0}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right font-medium">{p.apr20.toFixed(0)}%</td>
+                    <td className="px-4 py-3 text-right font-medium">{fmtPct(p.apr20, 0)}%</td>
                     <td className="px-4 py-3 text-right">{chg(p.changePct)}</td>
                     <td className="px-4 py-3 text-right">{p.feePerEthDay.toFixed(5)}</td>
                     <td className="px-4 py-3 text-right">{p.volEth?.toFixed(1) ?? "—"}</td>

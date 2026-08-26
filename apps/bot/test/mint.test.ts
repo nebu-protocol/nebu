@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { decodeAbiParameters, decodeFunctionData, parseAbi } from 'viem'
 import {
+  amountsForLiquidity,
   liquidityForAmount0,
   liquidityForAmount1,
   liquidityForAmounts,
@@ -60,6 +61,32 @@ test('liquidityForAmounts: harga di bawah range -> hanya token0; di atas -> hany
   const above = liquidityForAmounts(sqrtRatioX96AtTick(2000), sqrtA, sqrtB, 0n, amt)
   assert.ok(below > 0n)
   assert.ok(above > 0n)
+})
+
+test('amountsForLiquidity: round-trip dgn liquidityForAmounts (dalam range)', () => {
+  const sqrtP = Q96 // tick 0
+  const sqrtA = sqrtRatioX96AtTick(-600)
+  const sqrtB = sqrtRatioX96AtTick(600)
+  const amt = 10n ** 18n
+  const L = liquidityForAmounts(sqrtP, sqrtA, sqrtB, amt, amt)
+  const { amount0, amount1 } = amountsForLiquidity(sqrtP, sqrtA, sqrtB, L)
+  // L dibatasi sisi yg mengikat → salah satu amount ≈ input, keduanya ≤ input, > 0
+  assert.ok(amount0 > 0n && amount1 > 0n)
+  assert.ok(amount0 <= amt && amount1 <= amt)
+  // rekonstruksi L dari amounts hasil ≈ L semula (toleransi pembulatan)
+  const L2 = liquidityForAmounts(sqrtP, sqrtA, sqrtB, amount0, amount1)
+  const diff = L2 > L ? L2 - L : L - L2
+  assert.ok(diff * 10_000n <= L, `L drift terlalu besar: ${diff} vs ${L}`)
+})
+
+test('amountsForLiquidity: di bawah range -> token0 saja; di atas -> token1 saja', () => {
+  const sqrtA = sqrtRatioX96AtTick(600)
+  const sqrtB = sqrtRatioX96AtTick(1200)
+  const L = 10n ** 18n
+  const below = amountsForLiquidity(sqrtRatioX96AtTick(0), sqrtA, sqrtB, L)
+  const above = amountsForLiquidity(sqrtRatioX96AtTick(2000), sqrtA, sqrtB, L)
+  assert.ok(below.amount0 > 0n && below.amount1 === 0n)
+  assert.ok(above.amount1 > 0n && above.amount0 === 0n)
 })
 
 test('encodeMintPosition: pasangan ETH -> value=amount0Max, ada SWEEP, calldata valid', () => {

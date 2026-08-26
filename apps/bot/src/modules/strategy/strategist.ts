@@ -11,14 +11,18 @@ export type StrategyConfig = {
   maxPools: number
   widthFactor: number // lebar range posisi (1.2 = ±~20%)
   requireNoHook: boolean
+  momentumMinPct: number // tolak entry kalau harga token turun > ini (hindari LP token dump)
 }
 
 export const DEFAULT_STRATEGY: StrategyConfig = {
   minAgeDays: 3,
   minAprPct: 50,
-  maxPools: 3,
+  maxPools: 8, // diversifikasi lebih; saldo idle bisa masuk ke lebih banyak pool
   widthFactor: 1.2,
   requireNoHook: true,
+  // PnL LP didominasi harga token → JANGAN masuk token yg lagi dump (IL besar).
+  // Riset: LP downtrend = out-of-range + IL tanpa fee. Ambang -8% window snapshot.
+  momentumMinPct: Number(process.env.MOMENTUM_MIN_PCT ?? -8),
 }
 
 export type PortfolioState = {
@@ -39,6 +43,9 @@ function passesGates(r: YieldRow, cfg: StrategyConfig): string | null {
   if (cfg.requireNoHook && r.hook !== '-') return `hook ${r.hook} di luar whitelist`
   if ((r.ageDays ?? 0) < cfg.minAgeDays) return `umur ${(r.ageDays ?? 0).toFixed(1)}d < ${cfg.minAgeDays}d`
   if (r.apr20 < cfg.minAprPct) return `APR ${r.apr20.toFixed(0)}% < ${cfg.minAprPct}%`
+  // Momentum: hindari LP token yg lagi dump — IL besar, fee tak menutup.
+  if (r.momentumPct < cfg.momentumMinPct)
+    return `downtrend ${r.momentumPct.toFixed(1)}% < ${cfg.momentumMinPct}%`
   return null
 }
 
@@ -74,7 +81,7 @@ export function decide(
         action: 'HOLD',
         poolId,
         pair: row!.pair,
-        widthFactor: cfg.widthFactor,
+        widthFactor: row!.widthFactor ?? cfg.widthFactor,
         sizeFraction: 1 / cfg.maxPools,
         reason: `APR ${row!.apr20.toFixed(0)}%`,
       })
@@ -87,13 +94,14 @@ export function decide(
   for (const r of eligible.values()) {
     if (slots <= 0) break
     if (kept.includes(r.poolId)) continue
+    const width = r.widthFactor ?? cfg.widthFactor
     decisions.push({
       action: 'ENTER',
       poolId: r.poolId,
       pair: r.pair,
-      widthFactor: cfg.widthFactor,
+      widthFactor: width,
       sizeFraction: 1 / cfg.maxPools,
-      reason: `APR±20% ${r.apr20.toFixed(0)}%, umur ${(r.ageDays ?? 0).toFixed(1)}d, vol ${(r.volEth ?? 0).toFixed(0)} ETH/win`,
+      reason: `APR ${r.apr20.toFixed(0)}% (±${((width - 1) * 100).toFixed(0)}% auto), umur ${(r.ageDays ?? 0).toFixed(1)}d, vol ${(r.volEth ?? 0).toFixed(0)} ETH/win`,
     })
     slots--
   }
