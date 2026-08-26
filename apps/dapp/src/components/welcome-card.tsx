@@ -52,7 +52,9 @@ export async function WelcomeCard() {
   const realPnl = agent ? getWalletRealPnl(agent) : null;
   const totalEth = (balanceEth ?? 0) + (realPnl?.valueEth ?? 0);
   const totalUsd = ethUsd ? totalEth * ethUsd : null;
-  const pnlEth = realPnl?.pnlEth ?? 0;
+  // PnL berbasis SALDO (ground truth): nilai total − net setoran; fallback per-posisi.
+  const netDeposited = (owned?.deposited_eth ?? 0) - (owned?.withdrawn_eth ?? 0);
+  const pnlEth = netDeposited > 0 ? totalEth - netDeposited : (realPnl?.pnlEth ?? 0);
   const pnlUsd = ethUsd ? pnlEth * ethUsd : null;
   const netPct = realPnl?.avgNetPct ?? 0;
   // Seri chart kanonik (SINKRON dgn chart di halaman Portfolio).

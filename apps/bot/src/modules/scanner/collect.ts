@@ -5,6 +5,7 @@ import { run as execute } from '../executor/executor.ts'
 import { run as pnl } from '../report/pnl.ts'
 import { run as positionsLive } from '../report/positions-live.ts'
 import { run as edgeCheck } from '../report/edge-check.ts'
+import { run as ledgerSync } from '../report/ledger-sync.ts'
 import { run as exitManager } from '../strategy/exit-manager.ts'
 import { run as price } from '../price/ethusd.ts'
 import { log, sleep } from '../../core/util.ts'
@@ -30,6 +31,7 @@ async function cycle() {
   await guard('pnl', () => pnl())
   await guard('positions-live', () => positionsLive())
   await guard('edge-check', () => edgeCheck())
+  await guard('ledger-sync', () => ledgerSync())
   await guard('exit-manager', () => exitManager())
 }
 

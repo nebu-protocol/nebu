@@ -198,6 +198,9 @@ export function openDb(path: string = DB_PATH): DatabaseSync {
     'ALTER TABLE positions ADD COLUMN pnl_ts INTEGER',
     // puncak net_pct (high-water mark) untuk trailing take-profit
     'ALTER TABLE positions ADD COLUMN peak_net_pct REAL',
+    // Ledger deposit/withdraw on-chain (dari owner) → PnL berbasis SALDO yg akurat
+    'ALTER TABLE wallets ADD COLUMN deposited_eth REAL DEFAULT 0',
+    'ALTER TABLE wallets ADD COLUMN withdrawn_eth REAL DEFAULT 0',
     // risk manager per-wallet: profil + ambang custom (dipakai exit-manager)
     "ALTER TABLE wallets ADD COLUMN risk_profile TEXT DEFAULT 'safe'",
     'ALTER TABLE wallets ADD COLUMN risk_stop_loss REAL',

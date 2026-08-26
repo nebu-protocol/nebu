@@ -83,8 +83,6 @@ async function ManagedView({ address }: { address: string }) {
   const deployedEth = hasReal ? realPnl!.deployedEth : agent ? getWalletDeployed(agent) : 0;
   const deployedUsd = p.ethUsd ? deployedEth * p.ethUsd : null;
   const avgNet = hasReal ? realPnl!.avgNetPct : p.avgNet;
-  const pnlEth = hasReal ? realPnl!.pnlEth : null;
-  const pnlUsd = p.ethUsd && pnlEth !== null ? pnlEth * p.ethUsd : null;
   const botStatus = agent ? getBotStatus(agent) : null;
   const edgeHist = agent ? getEdgeHistory() : [];
   const liveMode = process.env.EXECUTOR_LIVE === "1";
@@ -92,6 +90,13 @@ async function ManagedView({ address }: { address: string }) {
   // Total nilai = saldo idle agent + nilai posisi OPEN (on-chain).
   const totalEth = (balanceEth ?? 0) + (realPnl?.valueEth ?? 0);
   const totalUsd = p.ethUsd ? totalEth * p.ethUsd : null;
+  // PnL SEBENARNYA (berbasis SALDO): nilai total sekarang − net setoran. Ground truth
+  // (menangkap gas + slippage otomatis), bukan penjumlahan per-posisi yg bisa over-count.
+  // Fallback ke PnL per-posisi kalau ledger belum ke-sync (deposit 0).
+  const netDeposited = (owned?.deposited_eth ?? 0) - (owned?.withdrawn_eth ?? 0);
+  const pnlEth = netDeposited > 0 ? totalEth - netDeposited : hasReal ? realPnl!.pnlEth : null;
+  const pnlUsd = p.ethUsd && pnlEth !== null ? pnlEth * p.ethUsd : null;
+  const pnlIsReal = netDeposited > 0 || hasReal;
   const timeAgo = (ts: number) => {
     const s = Math.floor(Date.now() / 1000) - ts;
     if (s < 3600) return `${Math.floor(s / 60)}m ago`;
@@ -173,13 +178,13 @@ async function ManagedView({ address }: { address: string }) {
             <Metric
               label="Your PnL"
               value={
-                hasReal
+                pnlIsReal && pnlEth !== null
                   ? pnlUsd === null
-                    ? `${pnlEth! >= 0 ? "+" : ""}${fmtEth(pnlEth!)} ETH`
-                    : `${pnlEth! >= 0 ? "+" : ""}${fmtUsd(pnlUsd)}`
+                    ? `${pnlEth >= 0 ? "+" : ""}${fmtEth(pnlEth)} ETH`
+                    : `${pnlEth >= 0 ? "+" : ""}${fmtUsd(pnlUsd)}`
                   : "—"
               }
-              tone={hasReal ? pnlEth : null}
+              tone={pnlIsReal ? pnlEth : null}
             />
           </div>
         </div>

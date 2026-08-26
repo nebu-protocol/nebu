@@ -10,6 +10,7 @@ const commands: Record<string, () => Promise<{ run: (args: string[]) => Promise<
   pnl: () => import('./modules/report/pnl.ts'),
   'positions-live': () => import('./modules/report/positions-live.ts'),
   'edge-check': () => import('./modules/report/edge-check.ts'),
+  'ledger-sync': () => import('./modules/report/ledger-sync.ts'),
   'exit-manager': () => import('./modules/strategy/exit-manager.ts'),
   price: () => import('./modules/price/ethusd.ts'),
   plan: () => import('./modules/strategy/plan.ts'),
