@@ -8,6 +8,7 @@ const NAV = [
   { href: "/", label: "Overview" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/status", label: "Status" },
 ];
 
 const isActive = (pathname: string, href: string) =>

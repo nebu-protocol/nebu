@@ -613,6 +613,74 @@ export function getPoolsTable(limit = 30): PoolRow[] {
 }
 
 /** Saldo ETH on-chain (dalam ETH) untuk satu address. */
+export type SystemStatus = {
+  now: number;
+  collector: { ts: number | null; phase: string | null };
+  price: { ethUsd: number | null; ts: number | null; source: string | null };
+  snapshot: { ts: number | null; pools: number };
+  positions: { open: number; closed: number };
+  edge: { ratio: number | null; winRate: number | null; sample: number };
+  errors: { failed: number; recent: { kind: string; detail: string; ts: number }[] };
+};
+
+/** Ringkasan kesehatan sistem untuk /status — kesegaran data + error terakhir (DB, sync). */
+export function getSystemStatus(): SystemStatus {
+  const now = Math.floor(Date.now() / 1000);
+  const empty: SystemStatus = {
+    now,
+    collector: { ts: null, phase: null },
+    price: { ethUsd: null, ts: null, source: null },
+    snapshot: { ts: null, pools: 0 },
+    positions: { open: 0, closed: 0 },
+    edge: { ratio: null, winRate: null, sample: 0 },
+    errors: { failed: 0, recent: [] },
+  };
+  try {
+    const d = getDb();
+    const meta = (k: string) => (d.prepare("SELECT value v FROM meta WHERE key = ?").get(k) as { v: string } | undefined)?.v;
+    const num = (v: string | undefined) => (v != null && v !== "" ? Number(v) : null);
+    const snapTs = (d.prepare("SELECT MAX(ts) t FROM pool_snapshots").get() as { t: number | null }).t;
+    const pools = (d.prepare("SELECT COUNT(*) n FROM pools").get() as { n: number }).n;
+    const posRows = d.prepare("SELECT status, COUNT(*) n FROM positions GROUP BY status").all() as { status: string; n: number }[];
+    const open = posRows.find((r) => r.status === "OPEN")?.n ?? 0;
+    const closed = posRows.find((r) => r.status === "CLOSED")?.n ?? 0;
+    // FAILED terakhir 24 jam + detailnya
+    const failed = (d.prepare("SELECT COUNT(*) n FROM executions WHERE status = 'FAILED' AND ts >= ?").get(now - 86400) as { n: number }).n;
+    const recent = d
+      .prepare("SELECT kind, COALESCE(detail,'') detail, ts FROM executions WHERE status = 'FAILED' ORDER BY ts DESC LIMIT 8")
+      .all() as { kind: string; detail: string; ts: number }[];
+    return {
+      now,
+      collector: { ts: num(meta("collector_ts")), phase: meta("collector_phase") ?? null },
+      price: { ethUsd: num(meta("eth_usd")), ts: num(meta("eth_usd_ts")), source: meta("eth_usd_source") ?? null },
+      snapshot: { ts: snapTs, pools },
+      positions: { open, closed },
+      edge: { ratio: num(meta("edge_ratio")), winRate: num(meta("edge_winrate")), sample: num(meta("edge_sample")) ?? 0 },
+      errors: { failed, recent },
+    };
+  } catch {
+    return empty;
+  }
+}
+
+/** Cek RPC chain: getBlockNumber + latensi. Server-side (async). */
+export async function checkRpc(): Promise<{ ok: boolean; block: number | null; ms: number }> {
+  const rpc = process.env.ROBINHOOD_RPC_URL ?? "https://rpc.mainnet.chain.robinhood.com";
+  const t0 = Date.now();
+  try {
+    const res = await fetch(rpc, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_blockNumber", params: [] }),
+      signal: AbortSignal.timeout(8000),
+    });
+    const j = (await res.json()) as { result?: string };
+    return { ok: !!j.result, block: j.result ? Number(BigInt(j.result)) : null, ms: Date.now() - t0 };
+  } catch {
+    return { ok: false, block: null, ms: Date.now() - t0 };
+  }
+}
+
 export async function getBalanceEth(address: string): Promise<number | null> {
   if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return null;
   const rpc = process.env.ROBINHOOD_RPC_URL ?? "https://rpc.mainnet.chain.robinhood.com";

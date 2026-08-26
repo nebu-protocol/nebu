@@ -8,7 +8,20 @@ import { run as edgeCheck } from '../report/edge-check.ts'
 import { run as ledgerSync } from '../report/ledger-sync.ts'
 import { run as exitManager } from '../strategy/exit-manager.ts'
 import { run as price } from '../price/ethusd.ts'
+import { openDb, setMeta } from '../../core/db.ts'
 import { log, sleep } from '../../core/util.ts'
+
+// Heartbeat: bukti collector hidup (dibaca /status dapp). Ditulis tiap cycle + exit-watch.
+const beat = (phase: string) => {
+  try {
+    const db = openDb()
+    const now = Math.floor(Date.now() / 1000)
+    setMeta(db, 'collector_ts', String(now))
+    setMeta(db, 'collector_phase', phase)
+  } catch {
+    /* jangan ganggu siklus */
+  }
+}
 
 const guard = async (name: string, fn: () => Promise<unknown>) => {
   try {
@@ -64,6 +77,7 @@ export async function run(args: string[]) {
   const exitMin = Math.max(Number(args[1] ?? process.env.EXIT_WATCH_MIN ?? 1), 0.5)
   for (;;) {
     const started = Date.now()
+    beat('cycle')
     await cycle()
     const deadline = started + intervalMin * 60_000
     log(
@@ -72,7 +86,10 @@ export async function run(args: string[]) {
     // Sela antar siklus penuh: lindungi modal dengan exit-watch cepat.
     while (Date.now() < deadline) {
       await sleep(Math.min(exitMin * 60_000, deadline - Date.now()))
-      if (Date.now() < deadline) await exitWatch()
+      if (Date.now() < deadline) {
+        beat('exit-watch')
+        await exitWatch()
+      }
     }
   }
 }
