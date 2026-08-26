@@ -14,8 +14,10 @@ function hash(s: string): number {
 }
 
 /**
- * Logo token dari file lokal yang sudah diunduh (public/tokens/{address}.png),
- * lalu logo token utama, terakhir ikon generatif. onError menjaga tak ada gambar rusak.
+ * Logo token: avatar generatif (gradien + inisial) SELALU jadi lapisan dasar, lalu
+ * logo asli di-overlay kalau ketemu. Urutan sumber: file pra-unduh → proxy runtime
+ * (/api/token-logo, "selalu cek" tiap token pools dari Blockscout/DexScreener). Tak
+ * pernah ada gambar rusak/blank — kalau semua gagal, avatar dasar yang tampil.
  */
 export function TokenIcon({
   symbol,
@@ -27,34 +29,40 @@ export function TokenIcon({
   size?: number;
 }) {
   const s = symbol.toLowerCase();
+  const addr = address?.toLowerCase();
   const candidates = [
-    address ? `/tokens/${address.toLowerCase()}.png` : null,
+    addr ? `/tokens/${addr}.png` : null,
     KNOWN.has(s) ? `/tokens/${s === "weth" ? "eth" : s}.png` : null,
+    addr ? `/api/token-logo/${addr}` : null,
   ].filter(Boolean) as string[];
   const [idx, setIdx] = useState(0);
-
   const src = candidates[idx];
-  if (src) {
-    // biome-ignore lint/performance/noImgElement: static token logo, tiny
-    return (
-      <img
-        src={src}
-        alt={symbol}
-        onError={() => setIdx((i) => i + 1)}
-        className="shrink-0 rounded-full bg-shade object-cover"
-        style={{ width: size, height: size }}
-      />
-    );
-  }
 
-  const hue = hash(s) % 360;
+  const h = hash(s || addr || "?");
+  const hue = h % 360;
+  const hue2 = (hue + 40) % 360;
   const initial = symbol.replace(/[^a-zA-Z0-9]/g, "").slice(0, 1).toUpperCase() || "?";
+
   return (
     <span
-      className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
-      style={{ width: size, height: size, background: `hsl(${hue} 60% 45%)`, fontSize: size * 0.42 }}
+      className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.42,
+        background: `linear-gradient(135deg, hsl(${hue} 65% 52%), hsl(${hue2} 70% 40%))`,
+      }}
     >
       {initial}
+      {src && (
+        // biome-ignore lint/performance/noImgElement: static/proxied token logo, tiny
+        <img
+          src={src}
+          alt={symbol}
+          onError={() => setIdx((i) => i + 1)}
+          className="absolute inset-0 h-full w-full rounded-full object-cover"
+        />
+      )}
     </span>
   );
 }
