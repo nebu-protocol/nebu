@@ -1,14 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { NavLinks } from "./nav-links";
+import { MobileNav, NavLinks } from "./nav-links";
 import { WalletButton } from "./wallet-button";
 
 export function Header() {
   return (
     <header className="border-line/60 sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 sm:gap-6">
+          <MobileNav />
           <Link href="/" className="flex items-center gap-2 font-semibold">
             <Image src="/lp-logo.png" alt="LP Bot" width={24} height={24} className="size-6 rounded-md" />
             LP Bot

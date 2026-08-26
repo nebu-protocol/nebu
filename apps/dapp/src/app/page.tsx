@@ -66,17 +66,17 @@ export default function Page() {
         <section>
           <h2 className="mb-3 text-lg font-medium">Pools</h2>
           <div className="overflow-x-auto rounded-2xl border border-line/60">
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full text-sm">
               <thead className="border-line/60 border-b text-soft">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">#</th>
+                  <th className="hidden px-4 py-3 text-left font-medium sm:table-cell">#</th>
                   <th className="px-4 py-3 text-left font-medium">Pool</th>
                   <th className="px-4 py-3 text-right font-medium">APR ±20%</th>
-                  <th className="px-4 py-3 text-right font-medium">Δ recent</th>
-                  <th className="px-4 py-3 text-right font-medium">Fee/ETH/d</th>
-                  <th className="px-4 py-3 text-right font-medium">Vol (ETH)</th>
-                  <th className="px-4 py-3 text-right font-medium">Swaps/h</th>
-                  <th className="px-4 py-3 text-right font-medium">Trend</th>
+                  <th className="hidden px-4 py-3 text-right font-medium sm:table-cell">Δ recent</th>
+                  <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">Fee/ETH/d</th>
+                  <th className="hidden px-4 py-3 text-right font-medium md:table-cell">Vol (ETH)</th>
+                  <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">Swaps/h</th>
+                  <th className="hidden px-4 py-3 text-right font-medium md:table-cell">Trend</th>
                 </tr>
               </thead>
               <tbody>
@@ -89,7 +89,7 @@ export default function Page() {
                 )}
                 {pools.map((p, i) => (
                   <tr key={p.poolId} className="border-line/60 border-t">
-                    <td className="px-4 py-3 text-soft">{i + 1}</td>
+                    <td className="hidden px-4 py-3 text-soft sm:table-cell">{i + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <TokenIcon symbol={p.sym1} address={p.address} size={28} />
@@ -97,12 +97,12 @@ export default function Page() {
                         <span className="text-xs text-soft">/ {p.sym0}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right font-medium">{fmtPct(p.apr20, 0)}%</td>
-                    <td className="px-4 py-3 text-right">{chg(p.changePct)}</td>
-                    <td className="px-4 py-3 text-right">{p.feePerEthDay.toFixed(5)}</td>
-                    <td className="px-4 py-3 text-right">{p.volEth?.toFixed(1) ?? "—"}</td>
-                    <td className="px-4 py-3 text-right">{p.swapsPerH.toFixed(0)}</td>
-                    <td className="px-4 py-3">
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-medium">{fmtPct(p.apr20, 0)}%</td>
+                    <td className="hidden whitespace-nowrap px-4 py-3 text-right sm:table-cell">{chg(p.changePct)}</td>
+                    <td className="hidden px-4 py-3 text-right lg:table-cell">{p.feePerEthDay.toFixed(5)}</td>
+                    <td className="hidden px-4 py-3 text-right md:table-cell">{p.volEth?.toFixed(1) ?? "—"}</td>
+                    <td className="hidden px-4 py-3 text-right lg:table-cell">{p.swapsPerH.toFixed(0)}</td>
+                    <td className="hidden px-4 py-3 md:table-cell">
                       <div className="flex justify-end">
                         <MiniLine values={p.spark} up={(p.changePct ?? 0) >= 0} />
                       </div>
