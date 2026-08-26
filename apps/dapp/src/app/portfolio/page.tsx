@@ -119,6 +119,15 @@ async function ManagedView({ address }: { address: string }) {
             {botStatus?.lastRunTs && botStatus.live > 0 ? (
               <span className="text-soft">· {botStatus.live} aksi on-chain</span>
             ) : null}
+            {botStatus?.edgeRatio != null && botStatus.edgeSample >= 5 ? (
+              <span
+                title="Rasio rata-rata untung ÷ rata-rata rugi posisi tertutup. Edge strategi positif kalau ≥ ~4.2:1 pada win-rate rendah; di bawahnya, edge tipis/negatif."
+                className={`rounded px-1.5 py-0.5 text-xs font-medium ${botStatus.edgeRatio >= 4.2 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}
+              >
+                edge {botStatus.edgeRatio.toFixed(1)}:1
+                {botStatus.winRate != null ? ` · win ${botStatus.winRate}%` : ""} ({botStatus.edgeSample})
+              </span>
+            ) : null}
           </div>
         )}
 

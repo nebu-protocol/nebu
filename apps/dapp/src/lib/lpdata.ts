@@ -412,15 +412,22 @@ export type BotStatus = {
   simulated: number;
   live: number;
   failed: number;
+  edgeRatio: number | null; // avg-win/avg-loss dari posisi closed (edge-check bot)
+  winRate: number | null; // %
+  edgeSample: number;
 };
 
 /** Status eksekusi terakhir untuk satu agent — bukti bot jalan + apa hasilnya. */
 export function getBotStatus(address: string): BotStatus {
-  const empty = { lastRunTs: null, simulated: 0, live: 0, failed: 0 };
+  const empty = { lastRunTs: null, simulated: 0, live: 0, failed: 0, edgeRatio: null, winRate: null, edgeSample: 0 };
   if (!isAddr(address)) return empty;
   try {
     const d = getDb();
     const addr = address.toLowerCase();
+    const meta = (k: string) =>
+      (d.prepare("SELECT value FROM meta WHERE key = ?").get(k) as { value: string } | undefined)?.value;
+    const er = meta("edge_ratio");
+    const wr = meta("edge_winrate");
     const last = d.prepare("SELECT MAX(ts) t FROM executions WHERE lower(wallet) = ?").get(addr) as {
       t: number | null;
     };
@@ -435,6 +442,9 @@ export function getBotStatus(address: string): BotStatus {
       simulated: by(["SIMULATED"]),
       live: by(["SENT", "CONFIRMED"]),
       failed: by(["FAILED"]),
+      edgeRatio: er ? Number(er) : null,
+      winRate: wr ? Number(wr) : null,
+      edgeSample: Number(meta("edge_sample") ?? 0),
     };
   } catch {
     return empty;
