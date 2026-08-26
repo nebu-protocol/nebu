@@ -64,7 +64,9 @@ export const EXIT = {
 // Cooldown re-entry: setelah posisi di pool ditutup, tunggu segini sebelum boleh masuk
 // lagi (hindari whipsaw balik ke pool yg baru di-stop-loss). BUKAN blok permanen —
 // dulu pool yg pernah disentuh diblok selamanya → bot kehabisan pool → berhenti entry.
-export const REENTRY_COOLDOWN_S = Number(process.env.REENTRY_COOLDOWN_H ?? 2) * 3600
+// 6j (naik dari 2j): STONKBROKER masuk→stop-loss→2j→masuk lagi→dump lagi. Cooldown
+// lebih panjang = tak gampang beli-ulang token yg baru dump.
+export const REENTRY_COOLDOWN_S = Number(process.env.REENTRY_COOLDOWN_H ?? 6) * 3600
 
 export const SCAN = {
   /** getLogs chunk sizing — adaptive: halve on RPC error, grow on quiet ranges. */

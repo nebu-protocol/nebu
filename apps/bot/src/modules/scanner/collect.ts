@@ -55,7 +55,9 @@ export async function run(args: string[]) {
     return
   }
   const intervalMin = Number(args[0] ?? 60)
-  const exitMin = Math.max(Number(args[1] ?? process.env.EXIT_WATCH_MIN ?? 2), 0.5)
+  // 1 menit (turun dari 2): dump memecoin cepat → cek lebih sering = overshoot stop
+  // lebih kecil (loser realized mendekati ambang, bukan lewat jauh).
+  const exitMin = Math.max(Number(args[1] ?? process.env.EXIT_WATCH_MIN ?? 1), 0.5)
   for (;;) {
     const started = Date.now()
     await cycle()

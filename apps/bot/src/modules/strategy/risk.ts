@@ -8,9 +8,12 @@ import type { ExitCfg } from './exit-manager.ts'
  */
 export type RiskProfileName = 'safe' | 'aggressive' | 'custom'
 
+// Tuning 26 Agu (data live: 8/10 loser nyangkut -34..-39% krn stop -30 kelewat lebar
+// + overshoot). Ketatkan aggressive → loser ~-22% (EV balik positif; winner +90-100%
+// jarang dip -20% dulu jadi tetap kekunci). safe tetap ketat.
 export const RISK_PRESETS: Record<'safe' | 'aggressive', ExitCfg> = {
-  safe: { stopLossPct: -12, priceStopPct: 15, takeProfitArmPct: 20, takeProfitTrailPct: 10 },
-  aggressive: { stopLossPct: -30, priceStopPct: 35, takeProfitArmPct: 40, takeProfitTrailPct: 30 },
+  safe: { stopLossPct: -10, priceStopPct: 13, takeProfitArmPct: 18, takeProfitTrailPct: 8 },
+  aggressive: { stopLossPct: -20, priceStopPct: 22, takeProfitArmPct: 35, takeProfitTrailPct: 22 },
 }
 
 export type WalletRisk = {
