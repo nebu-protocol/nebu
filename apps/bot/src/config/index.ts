@@ -50,7 +50,15 @@ export const MIN_POSITION_USD = Number(process.env.MIN_POSITION_USD ?? 1)
  */
 export const EXIT = {
   stopLossPct: Number(process.env.EXIT_STOP_LOSS ?? -15), // net vs HODL <= ini → keluar
-  takeProfitPct: Number(process.env.EXIT_TAKE_PROFIT ?? 40), // net vs HODL >= ini → keluar
+  // Trailing take-profit (riset: ride pemenang, jangan cap). Setelah untung ≥ arm,
+  // kunci dgn keluar bila net retrace ≥ trail (poin persen) dari PUNCAK. Pemenang 3×
+  // keluar ~2.4× alih-alih round-trip balik ke 0.
+  takeProfitArmPct: Number(process.env.EXIT_TP_ARM ?? 25),
+  takeProfitTrailPct: Number(process.env.EXIT_TP_TRAIL ?? 20),
+  // Fail-safe stop harga: keluar bila harga token turun ≥ ini (%) dari entry, DIHITUNG
+  // dari pergerakan tick saja — jalan walau net_pct (valuation) belum terisi. Cegah
+  // posisi bleed diam-diam saat stop-loss net tak bisa dievaluasi.
+  priceStopPct: Number(process.env.EXIT_PRICE_STOP ?? 20),
 }
 
 export const SCAN = {

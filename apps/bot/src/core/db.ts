@@ -188,6 +188,8 @@ export function openDb(path: string = DB_PATH): DatabaseSync {
     'ALTER TABLE positions ADD COLUMN fees_pct REAL',
     'ALTER TABLE positions ADD COLUMN il_pct REAL',
     'ALTER TABLE positions ADD COLUMN pnl_ts INTEGER',
+    // puncak net_pct (high-water mark) untuk trailing take-profit
+    'ALTER TABLE positions ADD COLUMN peak_net_pct REAL',
     // jumlah token1 (leg non-ETH) untuk aktivitas — human-readable
     'ALTER TABLE executions ADD COLUMN amount_token1 REAL',
   ]) {

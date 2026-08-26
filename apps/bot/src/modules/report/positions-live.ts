@@ -35,7 +35,8 @@ export async function run() {
        AND status IN ('SENT','CONFIRMED') AND ts >= ?`,
   )
   const upd = db.prepare(
-    `UPDATE positions SET cur_value_eth=?, entry_cost_eth=?, fees_eth=?, net_pct=?, fees_pct=?, il_pct=?, pnl_ts=? WHERE id=?`,
+    `UPDATE positions SET cur_value_eth=?, entry_cost_eth=?, fees_eth=?, net_pct=?, fees_pct=?, il_pct=?,
+       peak_net_pct=MAX(COALESCE(peak_net_pct, ?), ?), pnl_ts=? WHERE id=?`,
   )
 
   // Akumulasi agregat per wallet untuk riwayat chart.
@@ -57,7 +58,7 @@ export async function run() {
       const netPct = entry > 0 ? ((v.valueEth - entry) / entry) * 100 : 0
       const feesPct = entry > 0 ? (v.feesEth / entry) * 100 : 0
       const ilPct = entry > 0 ? ((v.principalEth - entry) / entry) * 100 : 0
-      upd.run(v.valueEth, entry, v.feesEth, netPct, feesPct, ilPct, now, p.id)
+      upd.run(v.valueEth, entry, v.feesEth, netPct, feesPct, ilPct, netPct, netPct, now, p.id)
       const w = p.wallet.toLowerCase()
       const cur = agg.get(w) ?? { value: 0, entry: 0 }
       agg.set(w, { value: cur.value + v.valueEth, entry: cur.entry + entry })

@@ -94,3 +94,24 @@ test('decide: paused -> tidak ada keputusan apa pun (kill switch)', () => {
   const out = decide([row({})], cfg, { paused: true, held: ['0xheld'] })
   assert.equal(out.length, 0)
 })
+
+test('decide: hurdle LVR — pool volatil (widthFactor tinggi) butuh APR lebih tinggi', () => {
+  // hurdle = minAprPct × widthFactor². width 1.2 → 72; width 2 → 200.
+  const out = decide(
+    [
+      row({ poolId: '0xcalm', apr20: 150, widthFactor: 1.2 }), // 150 ≥ 72 → lolos
+      row({ poolId: '0xvol', apr20: 150, widthFactor: 2 }), // 150 < 200 → ditolak (LVR ∝ σ²)
+    ],
+    cfg,
+    { paused: false, held: [] },
+  )
+  assert.deepEqual(
+    out.map((d) => d.poolId),
+    ['0xcalm'],
+  )
+})
+
+test('decide: momentum default 0 — dump ringan (-1%) pun ditolak (LP cuma untung saat uptrend)', () => {
+  const out = decide([row({ poolId: '0xslightdown', momentumPct: -1 })], cfg, { paused: false, held: [] })
+  assert.equal(out.length, 0)
+})

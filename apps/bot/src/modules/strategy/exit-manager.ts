@@ -11,24 +11,50 @@ const stateViewAbi = parseAbi([
   'function getSlot0(bytes32 poolId) view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee)',
 ])
 
+export type ExitCfg = {
+  stopLossPct: number
+  takeProfitArmPct: number
+  takeProfitTrailPct: number
+  priceStopPct: number
+}
+
 /**
  * Keputusan exit posisi (pure, diuji). PnL LP didominasi harga token, jadi:
- *  - stop-loss: net vs HODL turun ke ambang → potong rugi.
- *  - take-profit: net vs HODL naik ke ambang → kunci untung.
+ *  - stop-loss: net vs HODL turun ke ambang → potong rugi (butuh net_pct terisi).
+ *  - trailing take-profit: setelah net PUNCAK ≥ arm, keluar bila net retrace ≥ trail
+ *    (poin persen) dari puncak → RIDE pemenang (fat tail memecoin), bukan cap flat.
+ *  - price-stop: harga token turun ≥ ambang dari entry, dihitung dari TICK saja →
+ *    fail-safe yang jalan walau net_pct null (valuation gagal / belum jalan), jadi
+ *    posisi tak bisa bleed diam-diam. Pool selalu ETH=currency0 → token dump = tick
+ *    NAIK. Tengah range ≈ tick entry (rangeFromWidth memusatkan range di entry).
  *  - out-of-range: harga di luar range → 0 fee + full IL (dana mati) → keluar.
  * Return alasan (untuk log/record) atau null kalau tahan.
  */
 export function exitReason(
   netPct: number | null,
+  peakNetPct: number | null,
   currentTick: number,
   tickLower: number,
   tickUpper: number,
-  cfg: { stopLossPct: number; takeProfitPct: number } = EXIT,
+  cfg: ExitCfg = EXIT,
 ): string | null {
   if (netPct != null && netPct <= cfg.stopLossPct)
     return `stop-loss ${netPct.toFixed(1)}% ≤ ${cfg.stopLossPct}%`
-  if (netPct != null && netPct >= cfg.takeProfitPct)
-    return `take-profit ${netPct.toFixed(1)}% ≥ ${cfg.takeProfitPct}%`
+  // Trailing: kunci untung pemenang. Butuh puncak (peak) ≥ arm, lalu keluar saat
+  // net turun ≥ trail poin-persen dari puncak.
+  const peak = Math.max(peakNetPct ?? -Infinity, netPct ?? -Infinity)
+  if (
+    netPct != null &&
+    peak >= cfg.takeProfitArmPct &&
+    netPct <= peak - cfg.takeProfitTrailPct
+  )
+    return `trail-take-profit ${netPct.toFixed(1)}% (puncak ${peak.toFixed(1)}%, -${cfg.takeProfitTrailPct}pp)`
+  // Harga token (dalam ETH) turun berapa % dari entry ≈ tengah range. tick NAIK ⇒
+  // token makin murah ⇒ 1.0001^(mid−current) < 1 ⇒ dropPct > 0.
+  const mid = (tickLower + tickUpper) / 2
+  const tokenDropPct = (1 - 1.0001 ** (mid - currentTick)) * 100
+  if (tokenDropPct >= cfg.priceStopPct)
+    return `price-stop token -${tokenDropPct.toFixed(1)}% (tick ${currentTick} vs entry~${Math.round(mid)})`
   if (currentTick < tickLower || currentTick > tickUpper)
     return `out-of-range (tick ${currentTick} ∉ [${tickLower},${tickUpper}])`
   return null
@@ -42,6 +68,7 @@ type Row = {
   tick_lower: number
   tick_upper: number
   net_pct: number | null
+  peak_net_pct: number | null
   currency0: string
   currency1: string
   fee: number
@@ -60,7 +87,7 @@ export async function run() {
   const secret = process.env.LPBOT_KEY_SECRET
   const positions = db
     .prepare(
-      `SELECT p.id, p.wallet, p.pool_id, p.token_id, p.tick_lower, p.tick_upper, p.net_pct,
+      `SELECT p.id, p.wallet, p.pool_id, p.token_id, p.tick_lower, p.tick_upper, p.net_pct, p.peak_net_pct,
               po.currency0, po.currency1, po.fee, po.tick_spacing, po.hooks, w.enc_pk
        FROM positions p
        JOIN pools po ON po.pool_id = p.pool_id
@@ -88,7 +115,7 @@ export async function run() {
     } catch {
       continue // gagal baca harga — jangan ambil keputusan
     }
-    const reason = exitReason(p.net_pct, tick, p.tick_lower, p.tick_upper)
+    const reason = exitReason(p.net_pct, p.peak_net_pct, tick, p.tick_lower, p.tick_upper)
     if (!reason) continue
     log(`EXIT ${p.pool_id.slice(0, 10)} pos#${p.id}: ${reason}`)
 

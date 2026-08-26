@@ -8,32 +8,45 @@ import { run as exitManager } from '../strategy/exit-manager.ts'
 import { run as price } from '../price/ethusd.ts'
 import { log, sleep } from '../../core/util.ts'
 
-/** Satu siklus: activity→snapshot→plan→execute→pnl→positions-live(PnL nyata)→exit-manager. */
-async function cycle() {
-  const steps: [string, () => Promise<unknown>][] = [
-    ['price', () => price()],
-    ['activity', () => activity(['1'])],
-    ['snapshot', () => snapshot([])],
-    ['plan', () => plan()],
-    ['execute', () => execute()],
-    ['pnl', () => pnl()],
-    ['positions-live', () => positionsLive()],
-    ['exit-manager', () => exitManager()], // stop-loss/take-profit/out-of-range
-  ]
-  for (const [name, fn] of steps) {
-    try {
-      await fn()
-    } catch (e) {
-      log(`${name} gagal (lanjut step berikut): ${e}`)
-    }
+const guard = async (name: string, fn: () => Promise<unknown>) => {
+  try {
+    await fn()
+  } catch (e) {
+    log(`${name} gagal (lanjut step berikut): ${e}`)
   }
 }
 
 /**
- * Collector. Dua mode:
- *   collect once   → satu siklus lalu keluar (untuk cron/launchd — TAHAN reboot).
- *   collect [menit]→ loop internal tiap N menit (default 60; mati kalau proses mati).
- * Untuk durabilitas, pakai `once` + scheduler OS. Lihat scripts/lpbot.plist.
+ * Pipeline PENUH (berat): scrape harga → activity → snapshot → plan → execute(mint) →
+ * pnl → positions-live(PnL nyata) → exit-manager. Jarang (default 60m).
+ */
+async function cycle() {
+  await guard('price', () => price())
+  await guard('activity', () => activity(['1']))
+  await guard('snapshot', () => snapshot([]))
+  await guard('plan', () => plan())
+  await guard('execute', () => execute())
+  await guard('pnl', () => pnl())
+  await guard('positions-live', () => positionsLive())
+  await guard('exit-manager', () => exitManager())
+}
+
+/**
+ * Exit-watch RINGAN: refresh PnL nyata on-chain + cek stop-loss/price-stop/out-of-range.
+ * Cuma baca chain (StateView) + burn saat trigger — murah, jadi bisa SERING. Krusial:
+ * memecoin bisa dump 20%+ antar siklus penuh; tanpa watch cepat, stop-loss telat (rugi
+ * -34% padahal ambang -15%). Price-stop pakai tick fresh tiap watch, tak nunggu net_pct.
+ */
+async function exitWatch() {
+  await guard('positions-live', () => positionsLive())
+  await guard('exit-manager', () => exitManager())
+}
+
+/**
+ * Collector. Mode:
+ *   collect once        → satu siklus penuh lalu keluar (cron/launchd — tahan reboot).
+ *   collect [m] [watch] → loop: siklus penuh tiap m menit (default 60), DAN exit-watch
+ *                         cepat tiap `watch` menit (default 2 / env EXIT_WATCH_MIN) di sela.
  */
 export async function run(args: string[]) {
   if (args[0] === 'once') {
@@ -42,12 +55,18 @@ export async function run(args: string[]) {
     return
   }
   const intervalMin = Number(args[0] ?? 60)
+  const exitMin = Math.max(Number(args[1] ?? process.env.EXIT_WATCH_MIN ?? 2), 0.5)
   for (;;) {
     const started = Date.now()
     await cycle()
-    const elapsedMin = (Date.now() - started) / 60_000
-    const waitMin = Math.max(intervalMin - elapsedMin, 1)
-    log(`siklus selesai ${elapsedMin.toFixed(1)}m — tidur ${waitMin.toFixed(1)}m`)
-    await sleep(waitMin * 60_000)
+    const deadline = started + intervalMin * 60_000
+    log(
+      `siklus penuh ${((Date.now() - started) / 60_000).toFixed(1)}m — exit-watch tiap ${exitMin}m sampai siklus berikut`,
+    )
+    // Sela antar siklus penuh: lindungi modal dengan exit-watch cepat.
+    while (Date.now() < deadline) {
+      await sleep(Math.min(exitMin * 60_000, deadline - Date.now()))
+      if (Date.now() < deadline) await exitWatch()
+    }
   }
 }

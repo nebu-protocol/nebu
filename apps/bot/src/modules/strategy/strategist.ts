@@ -20,9 +20,10 @@ export const DEFAULT_STRATEGY: StrategyConfig = {
   maxPools: 8, // diversifikasi lebih; saldo idle bisa masuk ke lebih banyak pool
   widthFactor: 1.2,
   requireNoHook: true,
-  // PnL LP didominasi harga token → JANGAN masuk token yg lagi dump (IL besar).
-  // Riset: LP downtrend = out-of-range + IL tanpa fee. Ambang -8% window snapshot.
-  momentumMinPct: Number(process.env.MOMENTUM_MIN_PCT ?? -8),
+  // Riset (Amberdata/DeFi-Scientist): LP = short-vol; cuma menang saat token TRENDING
+  // NAIK, bleed di downtrend/chop. Jadi entry HANYA token yg tak turun (momentum ≥ 0).
+  // Sebelumnya -8 (masih izinkan dump ringan) → sumber utama "PnL turun drastis".
+  momentumMinPct: Number(process.env.MOMENTUM_MIN_PCT ?? 0),
 }
 
 export type PortfolioState = {
@@ -42,8 +43,12 @@ export type Decision = {
 function passesGates(r: YieldRow, cfg: StrategyConfig): string | null {
   if (cfg.requireNoHook && r.hook !== '-') return `hook ${r.hook} di luar whitelist`
   if ((r.ageDays ?? 0) < cfg.minAgeDays) return `umur ${(r.ageDays ?? 0).toFixed(1)}d < ${cfg.minAgeDays}d`
-  if (r.apr20 < cfg.minAprPct) return `APR ${r.apr20.toFixed(0)}% < ${cfg.minAprPct}%`
-  // Momentum: hindari LP token yg lagi dump — IL besar, fee tak menutup.
+  // Hurdle LVR (Lambert/Milionis): PnL LP ≈ fee − LVR, LVR ∝ σ². widthFactor sudah
+  // skala dgn σ (autoWidthFactor), jadi pool makin volatile butuh APR makin tinggi
+  // (∝ widthFactor²) utk menutup biaya volatilitas — bukan ambang APR flat.
+  const hurdle = cfg.minAprPct * (r.widthFactor ?? cfg.widthFactor) ** 2
+  if (r.apr20 < hurdle) return `APR ${r.apr20.toFixed(0)}% < hurdle-LVR ${hurdle.toFixed(0)}%`
+  // Momentum: cuma masuk token yg tak lagi turun — LP downtrend = IL besar tanpa fee.
   if (r.momentumPct < cfg.momentumMinPct)
     return `downtrend ${r.momentumPct.toFixed(1)}% < ${cfg.momentumMinPct}%`
   return null
