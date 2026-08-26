@@ -438,7 +438,10 @@ export async function run() {
     try {
       const balWei = await client.getBalance({ address: w.address as `0x${string}` })
       const balEth = Number(balWei) / 1e18
-      effFund = Math.min(w.fund_eth, balEth)
+      // Sisakan buffer gas (swap + mint = 2 tx) — JANGAN deploy 100% saldo, atau mint
+      // gagal "insufficient funds" (bug sizing sadar-bankroll: desired=1 → posMinEth =
+      // seluruh saldo → tak ada sisa utk gas). 0.0005 ETH = buffer sama dgn cek kirim.
+      effFund = Math.min(w.fund_eth, Math.max(0, balEth - 0.0005))
     } catch {
       // RPC gagal — pakai fund tersimpan (jangan blokir siklus)
     }
