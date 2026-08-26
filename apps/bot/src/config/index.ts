@@ -61,6 +61,11 @@ export const EXIT = {
   priceStopPct: Number(process.env.EXIT_PRICE_STOP ?? 20),
 }
 
+// Cooldown re-entry: setelah posisi di pool ditutup, tunggu segini sebelum boleh masuk
+// lagi (hindari whipsaw balik ke pool yg baru di-stop-loss). BUKAN blok permanen —
+// dulu pool yg pernah disentuh diblok selamanya → bot kehabisan pool → berhenti entry.
+export const REENTRY_COOLDOWN_S = Number(process.env.REENTRY_COOLDOWN_H ?? 2) * 3600
+
 export const SCAN = {
   /** getLogs chunk sizing — adaptive: halve on RPC error, grow on quiet ranges. */
   initialChunk: 200_000n,

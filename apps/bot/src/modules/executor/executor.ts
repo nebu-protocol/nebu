@@ -4,7 +4,7 @@ import { client } from '../../core/chain.ts'
 import { decryptSecret } from '../../core/crypto.ts'
 import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
-import { ADDRESSES, MIN_POSITION_USD, NATIVE, robinhoodChain, RPC_URL } from '../../config/index.ts'
+import { ADDRESSES, MIN_POSITION_USD, NATIVE, REENTRY_COOLDOWN_S, robinhoodChain, RPC_URL } from '../../config/index.ts'
 import { encodeMintPosition } from './mint.ts'
 import { encodeBurnPosition } from './burn.ts'
 import { burnLive, mintLive, swapToEthLive } from './live.ts'
@@ -279,10 +279,15 @@ export async function run() {
   const alreadyDone = db.prepare(
     `SELECT 1 FROM executions WHERE wallet = ? AND pool_id = ? AND kind = 'SWAP_IN' AND status != 'FAILED' LIMIT 1`,
   )
-  // Dedup LIVE: hanya swap NYATA (SENT/CONFIRMED) yang dihitung — SIMULATED tak boleh
-  // memicu resume-mint (token1 tak benar-benar ada).
+  // Resume-mint HANYA utk swap NYATA yg token1-nya masih nyangkut = ada SWAP_IN
+  // (SENT/CONFIRMED) TAPI belum ada posisi sama sekali utk pool ini. Kalau posisi sudah
+  // ada (mis. sudah pernah entry+exit), swap lama sudah dikonsumsi → JANGAN resume
+  // (token1 sudah di-swap balik = 0) → biar jalur fresh yg swap ulang saat re-entry.
   const liveSwapDone = db.prepare(
-    `SELECT 1 FROM executions WHERE wallet = ? AND pool_id = ? AND kind = 'SWAP_IN' AND status IN ('SENT','CONFIRMED') LIMIT 1`,
+    `SELECT 1 FROM executions e WHERE e.wallet = ? AND e.pool_id = ? AND e.kind = 'SWAP_IN'
+       AND e.status IN ('SENT','CONFIRMED')
+       AND NOT EXISTS (SELECT 1 FROM positions p WHERE p.wallet = e.wallet AND p.pool_id = e.pool_id)
+     LIMIT 1`,
   )
 
   for (const w of wallets) {
@@ -426,14 +431,21 @@ export async function run() {
       const pool = enters.find((e) => e.pool_id === plan.poolId)!
       if (pool.currency0 !== NATIVE) continue // v1 hanya pasangan ETH
 
-      // Pool ini sudah PERNAH jadi posisi (OPEN atau CLOSED)? skip.
-      //  - OPEN → jangan double-enter.
-      //  - CLOSED → cooldown re-entry (jangan balik ke pool yg baru di-exit stop-loss),
-      //    sekaligus cegah resume-mint salah pada pool yg token1-nya sudah di-swap balik.
-      const hasAnyPos = db
-        .prepare("SELECT 1 FROM positions WHERE wallet=? AND pool_id=? AND token_id IS NOT NULL LIMIT 1")
+      // OPEN → jangan double-enter (blok permanen).
+      const openPos = db
+        .prepare("SELECT 1 FROM positions WHERE wallet=? AND pool_id=? AND status='OPEN' AND token_id IS NOT NULL LIMIT 1")
         .get(w.address, plan.poolId)
-      if (hasAnyPos) continue
+      if (openPos) continue
+      // CLOSED → cooldown re-entry: jangan langsung balik ke pool yg baru di-exit
+      // (whipsaw), TAPI setelah cooldown boleh masuk lagi (kondisi bisa beda). Blok
+      // permanen dulu = bot kehabisan pool → berhenti entry.
+      const lastExit = db
+        .prepare("SELECT MAX(exit_ts) t FROM positions WHERE wallet=? AND pool_id=? AND status='CLOSED'")
+        .get(w.address, plan.poolId) as { t: number | null }
+      if (lastExit?.t && now - lastExit.t < REENTRY_COOLDOWN_S) {
+        log(`skip ${plan.poolId.slice(0, 10)}: cooldown re-entry (${Math.round((now - lastExit.t) / 60)}m < ${REENTRY_COOLDOWN_S / 60}m)`)
+        continue
+      }
 
       const amount0 = BigInt(Math.round((plan.totalEth - plan.swapEth) * 1e18))
 

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 
-import { GeneratedAvatar } from "@/components/generated-avatar";
 import { Header } from "@/components/layout/header";
 import { PortfolioChart } from "@/components/portfolio-chart";
 import { TokenIcon } from "@/components/token-icon";
@@ -37,20 +36,6 @@ const fmtEth = (n: number) => {
   const dp = a === 0 ? 2 : a >= 1 ? 4 : a >= 0.01 ? 5 : a >= 0.0001 ? 6 : 8;
   return n.toFixed(dp);
 };
-
-/** Angka $ besar dgn desimal abu-abu (ala Ondo). */
-function BigUsd({ n }: { n: number | null }) {
-  if (n === null) return <span className="text-4xl font-semibold tracking-tight">—</span>;
-  const [int, dec] = n
-    .toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    .split(".");
-  return (
-    <span className="text-4xl font-semibold tracking-tight sm:text-5xl">
-      ${int}
-      <span className="text-soft">.{dec}</span>
-    </span>
-  );
-}
 
 export default async function PortfolioPage() {
   const siwe = await getSiweAddress();
@@ -109,39 +94,12 @@ async function ManagedView({ address }: { address: string }) {
   return (
     <div className="grid min-w-0 gap-6 lg:grid-cols-3 lg:items-start">
       <div className="order-2 flex min-w-0 flex-col gap-6 lg:order-1 lg:col-span-2">
-        <div className="rounded-2xl border border-line/60 p-5">
-          <div className="flex items-center gap-3">
-            <GeneratedAvatar name={address} size={40} />
-            <h2 className="text-lg font-medium">
-              Welcome,{" "}
-              <span className="font-mono">
-                {address.slice(0, 6)}…{address.slice(-4)}
-              </span>
-            </h2>
-          </div>
-          <div className="mt-4 text-sm text-soft">Total value</div>
-          <BigUsd n={totalUsd} />
-          <div className="mt-1 text-xs text-soft">
-            {fmtEth(totalEth)} ETH · idle + {realPnl?.positions ?? 0} posisi
-          </div>
-
-          <div className="mt-5 grid grid-cols-2 gap-4 border-t border-line/60 pt-4 sm:grid-cols-4">
-            <Metric label="Deployed" value={deployedUsd === null ? `${fmtEth(deployedEth)} ETH` : fmtUsd(deployedUsd)} />
-            <Metric label="Open positions" value={String(realPnl?.positions ?? 0)} />
-            <Metric label="Net vs HODL" value={avgNet === null ? "—" : pct(avgNet)} tone={avgNet} />
-            <Metric
-              label="Your PnL"
-              value={
-                hasReal
-                  ? pnlUsd === null
-                    ? `${pnlEth! >= 0 ? "+" : ""}${fmtEth(pnlEth!)} ETH`
-                    : `${pnlEth! >= 0 ? "+" : ""}${fmtUsd(pnlUsd)}`
-                  : "—"
-              }
-              tone={hasReal ? pnlEth : null}
-            />
-          </div>
-        </div>
+        <PortfolioChart
+          points={series}
+          headerValue={totalUsd}
+          welcomeAddress={address}
+          label={`Total value · net vs HODL ${seriesIsReal ? "(on-chain)" : "(sim)"}`}
+        />
 
         {agent && (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-line/60 px-4 py-2.5 text-sm">
@@ -160,6 +118,26 @@ async function ManagedView({ address }: { address: string }) {
           </div>
         )}
 
+        {/* Metrik ringkas — dipindah ke antara status bot & risk manager. */}
+        <div className="rounded-2xl border border-line/60 p-5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Metric label="Deployed" value={deployedUsd === null ? `${fmtEth(deployedEth)} ETH` : fmtUsd(deployedUsd)} />
+            <Metric label="Open positions" value={String(realPnl?.positions ?? 0)} />
+            <Metric label="Net vs HODL" value={avgNet === null ? "—" : pct(avgNet)} tone={avgNet} />
+            <Metric
+              label="Your PnL"
+              value={
+                hasReal
+                  ? pnlUsd === null
+                    ? `${pnlEth! >= 0 ? "+" : ""}${fmtEth(pnlEth!)} ETH`
+                    : `${pnlEth! >= 0 ? "+" : ""}${fmtUsd(pnlUsd)}`
+                  : "—"
+              }
+              tone={hasReal ? pnlEth : null}
+            />
+          </div>
+        </div>
+
         {agent && (
           <RiskCard
             profile={owned?.risk_profile ?? null}
@@ -169,12 +147,6 @@ async function ManagedView({ address }: { address: string }) {
             tpTrail={owned?.risk_tp_trail ?? null}
           />
         )}
-
-      <PortfolioChart
-        points={series}
-        headerValue={totalUsd}
-        label={`Total value · net vs HODL ${seriesIsReal ? "(on-chain)" : "(sim)"}`}
-      />
 
       <div>
         <h3 className="mb-1 text-sm font-medium">Your positions</h3>

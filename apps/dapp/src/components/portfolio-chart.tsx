@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   type ChartRange,
@@ -9,6 +9,9 @@ import {
   RANGE_MS,
   RangeTabs,
 } from "@/components/charts/price-chart";
+import { GeneratedAvatar } from "@/components/generated-avatar";
+
+const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 /**
  * Chart portfolio LP: seri {timestamp,value} (mis. ETH/USD dari snapshot on-chain),
@@ -32,13 +35,33 @@ export function PortfolioChart({
   label,
   unit = "%",
   headerValue = null,
+  welcomeAddress,
 }: {
   points: HistoryPoint[];
   label: string;
   unit?: "%" | "$";
   headerValue?: number | null;
+  welcomeAddress?: string;
 }) {
   const [range, setRange] = useState<ChartRange>("ALL");
+  // Jam hidup (client-only → tak ada hydration mismatch). Cocokkan gaya screenshot.
+  const [now, setNow] = useState("");
+  useEffect(() => {
+    if (!welcomeAddress) return;
+    const fmt = () =>
+      new Date().toLocaleString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
+    setNow(fmt());
+    const id = setInterval(() => setNow(fmt()), 1000);
+    return () => clearInterval(id);
+  }, [welcomeAddress]);
 
   const filtered = useMemo(() => {
     if (points.length === 0) return points;
@@ -58,6 +81,17 @@ export function PortfolioChart({
 
   return (
     <div className="rounded-2xl border border-line/60 p-5">
+      {welcomeAddress && (
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-3">
+            <GeneratedAvatar name={welcomeAddress} size={36} />
+            <h2 className="truncate text-base font-medium sm:text-lg">
+              Welcome, <span className="font-mono">{short(welcomeAddress)}</span>
+            </h2>
+          </div>
+          <span className="hidden whitespace-nowrap text-sm text-soft sm:block">{now}</span>
+        </div>
+      )}
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           {headerValue != null ? (
