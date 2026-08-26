@@ -224,7 +224,7 @@ async function ManagedView({ address }: { address: string }) {
                       className="flex items-center gap-2 whitespace-nowrap"
                       title={`Range [${pos.tickLower}, ${pos.tickUpper}] · IL ${pos.ilPct === null ? "—" : pos.ilPct.toFixed(2) + "%"}`}
                     >
-                      <TokenIcon symbol={pos.pair.split("/")[1] ?? pos.pair} address={pos.tokenAddr} size={22} />
+                      <TokenIcon symbol={pos.pair.split("/")[1] ?? pos.pair} address={pos.tokenAddr} size={22} link />
                       {pos.pair}
                     </span>
                   </td>

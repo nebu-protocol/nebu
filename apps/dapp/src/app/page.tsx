@@ -42,7 +42,7 @@ export default function Page() {
               {pools.slice(0, 4).map((p) => (
                 <div key={p.poolId} className="overflow-hidden rounded-2xl border border-line/60 p-4">
                   <div className="flex items-center gap-2">
-                    <TokenIcon symbol={p.sym1} address={p.address} size={32} />
+                    <TokenIcon symbol={p.sym1} address={p.address} size={32} link />
                     <div className="min-w-0">
                       <div className="truncate font-medium">{p.sym1}</div>
                       <div className="text-xs text-soft">/ ETH</div>
@@ -92,7 +92,7 @@ export default function Page() {
                     <td className="hidden px-4 py-3 text-soft sm:table-cell">{i + 1}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <TokenIcon symbol={p.sym1} address={p.address} size={28} />
+                        <TokenIcon symbol={p.sym1} address={p.address} size={28} link />
                         <span className="font-medium">{p.sym1}</span>
                         <span className="text-xs text-soft">/ {p.sym0}</span>
                       </div>

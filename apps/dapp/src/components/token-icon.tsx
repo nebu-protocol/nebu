@@ -19,14 +19,19 @@ function hash(s: string): number {
  * (/api/token-logo, "selalu cek" tiap token pools dari Blockscout/DexScreener). Tak
  * pernah ada gambar rusak/blank — kalau semua gagal, avatar dasar yang tampil.
  */
+const EXPLORER = "https://robinhoodchain.blockscout.com";
+
 export function TokenIcon({
   symbol,
   address,
   size = 28,
+  link = false,
 }: {
   symbol: string;
   address?: string | null;
   size?: number;
+  /** true = hover tampil nama token + klik → halaman token di block explorer. */
+  link?: boolean;
 }) {
   const s = symbol.toLowerCase();
   const addr = address?.toLowerCase();
@@ -43,7 +48,7 @@ export function TokenIcon({
   const hue2 = (hue + 40) % 360;
   const initial = symbol.replace(/[^a-zA-Z0-9]/g, "").slice(0, 1).toUpperCase() || "?";
 
-  return (
+  const icon = (
     <span
       className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white"
       style={{
@@ -63,6 +68,27 @@ export function TokenIcon({
           className="absolute inset-0 h-full w-full rounded-full object-cover"
         />
       )}
+    </span>
+  );
+
+  if (!link) return icon;
+  // hover = nama token; klik = halaman token di block explorer (kalau ada address).
+  if (addr) {
+    return (
+      <a
+        href={`${EXPLORER}/token/${addr}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={symbol}
+        className="inline-flex shrink-0 transition hover:opacity-75"
+      >
+        {icon}
+      </a>
+    );
+  }
+  return (
+    <span title={symbol} className="inline-flex shrink-0">
+      {icon}
     </span>
   );
 }

@@ -59,7 +59,8 @@ function FlowIcons({
   dir: "in" | "out" | "close";
 }) {
   const eth = <TokenIcon symbol="ETH" size={18} />;
-  const tok = <TokenIcon symbol={tokenSym ?? "?"} address={tokenAddr} size={18} />;
+  // Token icon: hover → nama token, klik → halaman token di block explorer.
+  const tok = <TokenIcon symbol={tokenSym ?? "?"} address={tokenAddr} size={18} link />;
   const arrow = <span className={dir === "in" ? "text-emerald-600" : "text-red-500"}>→</span>;
   let seq: React.ReactNode[];
   switch (kind) {
