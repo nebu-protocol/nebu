@@ -23,6 +23,7 @@ import { ManagePanel } from "./manage-panel";
 import { MobileManage } from "./mobile-manage";
 import { PortfolioClient } from "./portfolio-client";
 import { RiskCard } from "./risk-card";
+import { WelcomeHeader } from "./welcome-header";
 
 export const metadata: Metadata = { title: "Portfolio" };
 export const dynamic = "force-dynamic";
@@ -44,7 +45,11 @@ export default async function PortfolioPage() {
     <>
       <Header />
       <main className="mx-auto max-w-6xl px-4 py-10">
-        <h1 className="mb-6 text-2xl font-semibold tracking-tight">Portfolio</h1>
+        {siwe ? (
+          <WelcomeHeader address={siwe} />
+        ) : (
+          <h1 className="mb-6 text-2xl font-semibold tracking-tight">Portfolio</h1>
+        )}
         {siwe ? <ManagedView address={siwe} /> : <PortfolioClient />}
         <p className="mt-4 text-xs text-soft">
           PnL untuk wallet-mu. Net vs HODL — simulasi, bukan nasihat finansial.
@@ -97,7 +102,6 @@ async function ManagedView({ address }: { address: string }) {
         <PortfolioChart
           points={series}
           headerValue={totalUsd}
-          welcomeAddress={address}
           label={`Total value · net vs HODL ${seriesIsReal ? "(on-chain)" : "(sim)"}`}
         />
 

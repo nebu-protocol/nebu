@@ -336,10 +336,11 @@ export async function run() {
             toTok(m.amount1, s.currency1))
           if (m.status === 'success')
             db.prepare(
-              `INSERT INTO positions (wallet, pool_id, token_id, tick_lower, tick_upper, liquidity, entry_ts, status)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN')`,
+              `INSERT INTO positions (wallet, pool_id, token_id, tick_lower, tick_upper, liquidity, entry_ts, status,
+                 net_pct, fees_pct, il_pct, peak_net_pct, pnl_ts)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', 0, 0, 0, 0, ?)`,
             ).run(w.address, s.pool_id, m.tokenId ? m.tokenId.toString() : null,
-              m.tickLower, m.tickUpper, m.liquidity.toString(), now)
+              m.tickLower, m.tickUpper, m.liquidity.toString(), now, now)
           log(`RECONCILE MINT ${m.status} ${m.hash} tokenId=${m.tokenId}`)
         } catch (e) {
           log(`reconcile skip ${s.pool_id.slice(0, 10)}: ${e}`)
@@ -467,10 +468,13 @@ export async function run() {
             toTok(m.amount1, pool.currency1))
           if (m.status === 'success')
             db.prepare(
-              `INSERT INTO positions (wallet, pool_id, token_id, tick_lower, tick_upper, liquidity, entry_ts, status)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN')`,
+              // Seed PnL 0 di entry (net vs HODL = 0 saat baru masuk) → UI langsung
+              // tampil 0.00%, bukan "—", sebelum positions-live hitung nilai nyata.
+              `INSERT INTO positions (wallet, pool_id, token_id, tick_lower, tick_upper, liquidity, entry_ts, status,
+                 net_pct, fees_pct, il_pct, peak_net_pct, pnl_ts)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', 0, 0, 0, 0, ?)`,
             ).run(w.address, plan.poolId, m.tokenId ? m.tokenId.toString() : null,
-              m.tickLower, m.tickUpper, m.liquidity.toString(), now)
+              m.tickLower, m.tickUpper, m.liquidity.toString(), now, now)
           log(`MINT ${m.status} ${m.hash} tokenId=${m.tokenId}`)
         } catch (e) {
           // Gagal di PREFLIGHT / setup (belum kirim tx) → SKIP bersih, bukan FAILED.
