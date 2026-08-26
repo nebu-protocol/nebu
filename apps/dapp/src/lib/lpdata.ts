@@ -451,6 +451,19 @@ export function getBotStatus(address: string): BotStatus {
   }
 }
 
+/** Riwayat edge (avg-win/avg-loss) per jam — untuk sparkline tren strategi. */
+export function getEdgeHistory(limit = 40): { ts: number; ratio: number }[] {
+  try {
+    return (
+      getDb()
+        .prepare("SELECT ts, ratio FROM edge_history WHERE ratio IS NOT NULL ORDER BY ts DESC LIMIT ?")
+        .all(limit) as { ts: number; ratio: number }[]
+    ).reverse();
+  } catch {
+    return [];
+  }
+}
+
 /** APR estimasi = rata-rata pool teratas yang lolos guard (target bot). Gross, sim. */
 export function getEstApr(topN = 3): number | null {
   try {

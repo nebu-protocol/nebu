@@ -45,6 +45,12 @@ export async function run() {
   setMeta(db, 'edge_ratio', s.ratio == null ? '' : s.ratio.toFixed(2))
   setMeta(db, 'edge_winrate', (s.winRate * 100).toFixed(0))
   setMeta(db, 'edge_sample', String(s.sample))
+  // Riwayat per jam (bucket ts ke jam biar tak spam saat exit-watch cepat) → tren.
+  const hourTs = Math.floor(Date.now() / 3_600_000) * 3600
+  db.prepare(
+    `INSERT INTO edge_history (ts, ratio, win_rate, sample) VALUES (?, ?, ?, ?)
+     ON CONFLICT(ts) DO UPDATE SET ratio=excluded.ratio, win_rate=excluded.win_rate, sample=excluded.sample`,
+  ).run(hourTs, s.ratio, s.winRate * 100, s.sample)
   const health =
     s.ratio == null || s.sample < MIN_SAMPLE
       ? 'sampel kurang'

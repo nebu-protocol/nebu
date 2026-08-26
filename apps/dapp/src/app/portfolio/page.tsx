@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 
 import { Header } from "@/components/layout/header";
 import { PortfolioChart } from "@/components/portfolio-chart";
+import { Sparkline } from "@/components/sparkline";
 import { TokenIcon } from "@/components/token-icon";
 import {
   getBalanceEth,
   getBotStatus,
+  getEdgeHistory,
   getEstApr,
   getWalletActivity,
   getWalletDeployed,
@@ -84,6 +86,7 @@ async function ManagedView({ address }: { address: string }) {
   const pnlEth = hasReal ? realPnl!.pnlEth : null;
   const pnlUsd = p.ethUsd && pnlEth !== null ? pnlEth * p.ethUsd : null;
   const botStatus = agent ? getBotStatus(agent) : null;
+  const edgeHist = agent ? getEdgeHistory() : [];
   const liveMode = process.env.EXECUTOR_LIVE === "1";
   const estApr = getEstApr();
   // Total nilai = saldo idle agent + nilai posisi OPEN (on-chain).
@@ -128,6 +131,36 @@ async function ManagedView({ address }: { address: string }) {
                 {botStatus.winRate != null ? ` · win ${botStatus.winRate}%` : ""} ({botStatus.edgeSample})
               </span>
             ) : null}
+          </div>
+        )}
+
+        {agent && botStatus?.edgeRatio != null && edgeHist.length >= 2 && (
+          <div className="rounded-2xl border border-line/60 p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-medium">Strategy edge</h3>
+                <p className="mt-0.5 text-xs text-soft">Rata-rata untung ÷ rugi posisi tertutup. Target ≥ 4.2:1.</p>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span
+                    className={`text-2xl font-semibold ${botStatus.edgeRatio >= 4.2 ? "text-emerald-600" : "text-amber-600"}`}
+                  >
+                    {botStatus.edgeRatio.toFixed(2)}:1
+                  </span>
+                  {botStatus.winRate != null && (
+                    <span className="text-xs text-soft">
+                      win {botStatus.winRate}% · {botStatus.edgeSample} closed
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="h-14 w-32 shrink-0">
+                <Sparkline
+                  values={edgeHist.map((e) => e.ratio)}
+                  trend={edgeHist[edgeHist.length - 1]!.ratio >= edgeHist[0]!.ratio ? "up" : "down"}
+                  animate={false}
+                />
+              </div>
+            </div>
           </div>
         )}
 

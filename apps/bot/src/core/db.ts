@@ -117,6 +117,14 @@ CREATE TABLE IF NOT EXISTS wallet_pnl_hist (
   PRIMARY KEY (wallet, ts)
 );
 
+-- Riwayat "edge" strategi (avg-win/avg-loss) per siklus — lihat tren tuning berhasil / tidak
+CREATE TABLE IF NOT EXISTS edge_history (
+  ts       INTEGER PRIMARY KEY,
+  ratio    REAL,
+  win_rate REAL,
+  sample   INTEGER
+);
+
 -- PnL posisi (simulasi) vs HODL — dibaca backoffice
 CREATE TABLE IF NOT EXISTS positions_pnl (
   pool_id          TEXT PRIMARY KEY,
