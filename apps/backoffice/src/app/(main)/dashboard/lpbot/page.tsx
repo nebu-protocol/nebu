@@ -56,6 +56,8 @@ export default async function Page() {
   const pnl = getLpbotPnl();
   const avgNet = pnl.length ? pnl.reduce((s, p) => s + p.net_pct, 0) / pnl.length : null;
   const winners = pnl.filter((p) => p.net_pct > 0).length;
+  let avgTone: "muted" | "up" | "down" = "muted";
+  if (avgNet !== null) avgTone = avgNet >= 0 ? "up" : "down";
 
   return (
     <div className="flex flex-col gap-5">
@@ -77,7 +79,7 @@ export default async function Page() {
         </div>
         <div className="flex items-center gap-2">
           {currentUser && (
-            <span className="text-muted-foreground hidden text-sm sm:inline">
+            <span className="hidden text-muted-foreground text-sm sm:inline">
               {currentUser} · {role}
             </span>
           )}
@@ -99,7 +101,7 @@ export default async function Page() {
           label="Avg Net vs HODL"
           value={avgNet === null ? "—" : `${avgNet >= 0 ? "+" : ""}${avgNet.toFixed(1)}%`}
           hint={avgNet === null ? "menunggu data" : `${winners}/${pnl.length} beat HODL`}
-          tone={avgNet === null ? "muted" : avgNet >= 0 ? "up" : "down"}
+          tone={avgTone}
         />
         <Stat
           label="Automation Wallets"
@@ -133,8 +135,7 @@ function Stat({
   hint?: string;
   tone?: "muted" | "up" | "down";
 }) {
-  const valueClass =
-    tone === "up" ? "text-emerald-600 dark:text-emerald-400" : tone === "down" ? "text-destructive" : "";
+  const valueClass = { up: "text-emerald-600 dark:text-emerald-400", down: "text-destructive", muted: "" }[tone];
   return (
     <Card>
       <CardContent className="flex flex-col gap-1 pt-6">

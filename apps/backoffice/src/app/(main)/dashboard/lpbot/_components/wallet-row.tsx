@@ -42,17 +42,22 @@ export function WalletRow({
     setFund(ccy === "USD" && ethUsd ? (balanceEth * ethUsd).toFixed(2) : balanceEth.toFixed(4));
   };
 
+  let executeHint = "Jalankan executor sekarang";
+  if (w.has_entered === 1) executeHint = "Sudah masuk posisi";
+  else if (w.automation === 0) executeHint = "Aktifkan automation dulu";
+  else if (w.fund_eth === 0) executeHint = "Set fund dulu";
+
   return (
     <TableRow>
       <TableCell className="align-top">
         <div className="font-medium">
           {w.name}
-          {w.owner && <span className="text-muted-foreground ml-1 text-xs">· {w.owner}</span>}
+          {w.owner && <span className="ml-1 text-muted-foreground text-xs">· {w.owner}</span>}
         </div>
         <div className="font-mono text-muted-foreground text-xs">
           {w.address.slice(0, 10)}…{w.address.slice(-6)}
         </div>
-        <div className="text-muted-foreground mt-0.5 text-xs">
+        <div className="mt-0.5 text-muted-foreground text-xs">
           {balanceEth === null
             ? "balance —"
             : `${balanceEth.toFixed(4)} ETH${ethUsd ? ` · ${fmtUsd(balanceEth * ethUsd)}` : ""}`}
@@ -75,7 +80,7 @@ export function WalletRow({
             <button
               type="button"
               onClick={() => setCcy((c) => (c === "ETH" ? "USD" : "ETH"))}
-              className="hover:bg-accent rounded border px-1.5 py-0.5 text-xs"
+              className="rounded border px-1.5 py-0.5 text-xs hover:bg-accent"
               title="Ganti unit"
             >
               {ccy}
@@ -84,7 +89,7 @@ export function WalletRow({
               type="button"
               onClick={setMax}
               disabled={balanceEth === null}
-              className="hover:bg-accent rounded border px-1.5 py-0.5 text-xs disabled:opacity-50"
+              className="rounded border px-1.5 py-0.5 text-xs hover:bg-accent disabled:opacity-50"
             >
               Max
             </button>
@@ -123,15 +128,7 @@ export function WalletRow({
             type="submit"
             size="sm"
             disabled={w.has_entered === 1 || w.automation === 0 || w.fund_eth === 0}
-            title={
-              w.has_entered === 1
-                ? "Sudah masuk posisi"
-                : w.automation === 0
-                  ? "Aktifkan automation dulu"
-                  : w.fund_eth === 0
-                    ? "Set fund dulu"
-                    : "Jalankan executor sekarang"
-            }
+            title={executeHint}
           >
             <Play className="size-3.5" />
             {w.has_entered === 1 ? "Entered" : "Execute"}

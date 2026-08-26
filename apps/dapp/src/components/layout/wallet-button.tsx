@@ -2,7 +2,7 @@
 
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { GeneratedAvatar } from "@/components/generated-avatar";
 import { signOutAction } from "@/server/wallet-actions";
@@ -20,6 +20,18 @@ export function WalletButton() {
   const [agent, setAgent] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState<"owner" | "agent" | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  // Tutup dropdown saat klik/tap di luar — pakai listener dokumen (andal lintas
+  // stacking-context; overlay `fixed` bisa ketiban konten halaman & telan klik).
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open]);
 
   // Agent wallet (kalau sesi SIWE ada) untuk ditampilkan di dropdown.
   useEffect(() => {
@@ -67,7 +79,7 @@ export function WalletButton() {
   }
 
   return (
-    <div className="relative">
+    <div ref={boxRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -77,9 +89,7 @@ export function WalletButton() {
         {short(addr)}
       </button>
       {open && (
-        <>
-          <button type="button" aria-label="close" className="fixed inset-0 z-10 cursor-default" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-2 w-72 overflow-hidden rounded-2xl border border-line/60 bg-white shadow-xl">
+          <div className="absolute right-0 z-30 mt-2 w-72 overflow-hidden rounded-2xl border border-line/60 bg-white shadow-xl">
             <div className="flex items-center gap-3 p-4">
               <GeneratedAvatar name={addr} size={44} />
               <div className="min-w-0">
@@ -121,7 +131,6 @@ export function WalletButton() {
               </button>
             </div>
           </div>
-        </>
       )}
     </div>
   );

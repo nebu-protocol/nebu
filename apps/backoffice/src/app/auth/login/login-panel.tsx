@@ -19,7 +19,7 @@ export function LoginPanel({ siteKey }: { siteKey: string | null }) {
     <form action={formAction} className="flex w-full max-w-sm flex-col gap-5">
       <div className="flex flex-col items-center gap-2 text-center">
         <Image src="/lp-logo.png" alt="LP Bot" width={48} height={48} className="rounded-xl" />
-        <h1 className="text-xl font-semibold">LP Bot</h1>
+        <h1 className="font-semibold text-xl">LP Bot</h1>
         <p className="text-muted-foreground text-sm">Masuk untuk mengakses dashboard</p>
       </div>
 
@@ -47,7 +47,7 @@ export function LoginPanel({ siteKey }: { siteKey: string | null }) {
         {pending ? "Memproses…" : "Masuk"}
       </Button>
 
-      <p className="text-muted-foreground text-center text-sm">
+      <p className="text-center text-muted-foreground text-sm">
         Belum punya akun?{" "}
         <Link href="/auth/register" className="text-primary hover:underline">
           Daftar

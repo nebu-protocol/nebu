@@ -40,9 +40,10 @@ export function TurnstileWidget({ siteKey }: { siteKey: string | null }) {
     return () => {
       cancelled = true;
       if (iv) clearInterval(iv);
-      if (widgetId.current && window.turnstile) {
+      // biome-ignore lint/suspicious/noUnnecessaryConditions: widgetId.current di-set di dalam closure tryRender yang tak dilacak analisis alur biome (bukan selalu null)
+      if (widgetId.current) {
         try {
-          window.turnstile.remove(widgetId.current);
+          window.turnstile?.remove(widgetId.current);
         } catch {
           // widget sudah hilang — abaikan
         }

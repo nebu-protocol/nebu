@@ -19,7 +19,7 @@ export function RegisterPanel({ siteKey }: { siteKey: string | null }) {
     <form action={formAction} className="flex w-full max-w-sm flex-col gap-5">
       <div className="flex flex-col items-center gap-2 text-center">
         <Image src="/lp-logo.png" alt="LP Bot" width={48} height={48} className="rounded-xl" />
-        <h1 className="text-xl font-semibold">Daftar LP Bot</h1>
+        <h1 className="font-semibold text-xl">Daftar LP Bot</h1>
         <p className="text-muted-foreground text-sm">Akun member — kelola wallet sendiri & ikut menjalankan bot</p>
       </div>
 
@@ -58,7 +58,7 @@ export function RegisterPanel({ siteKey }: { siteKey: string | null }) {
         {pending ? "Memproses…" : "Daftar"}
       </Button>
 
-      <p className="text-muted-foreground text-center text-sm">
+      <p className="text-center text-muted-foreground text-sm">
         Sudah punya akun?{" "}
         <Link href="/auth/login" className="text-primary hover:underline">
           Masuk

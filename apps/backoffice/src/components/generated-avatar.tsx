@@ -27,7 +27,7 @@ export function GeneratedAvatar({
   size?: number;
   className?: string;
 }) {
-  const seed = hash((name || "?").toLowerCase());
+  const seed = hash(name ? name.toLowerCase() : "?");
   const hue = seed % 360;
 
   // A handful of overlapping circles clustered near the centre; positions,
@@ -47,7 +47,7 @@ export function GeneratedAvatar({
 
   return (
     <svg
-      aria-label={name || "avatar"}
+      aria-label={name ? name : "avatar"}
       className={cn("shrink-0 rounded-full", className)}
       height={size}
       role="img"
@@ -55,8 +55,15 @@ export function GeneratedAvatar({
       width={size}
     >
       <rect fill={`hsl(${hue} 60% 90%)`} height="100" width="100" />
-      {circles.map((c, i) => (
-        <circle key={i} cx={c.cx} cy={c.cy} fill={`hsl(${hue} 55% ${c.light}%)`} opacity={0.85} r={c.r} />
+      {circles.map((c) => (
+        <circle
+          key={`${c.cx}-${c.cy}-${c.r}-${c.light}`}
+          cx={c.cx}
+          cy={c.cy}
+          fill={`hsl(${hue} 55% ${c.light}%)`}
+          opacity={0.85}
+          r={c.r}
+        />
       ))}
     </svg>
   );

@@ -63,7 +63,7 @@ export function UsersTable({ users, currentUser }: { users: LpUser[]; currentUse
                     id="role"
                     name="role"
                     defaultValue="viewer"
-                    className="border-input bg-transparent h-9 rounded-md border px-3 text-sm"
+                    className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
                   >
                     <option value="viewer">viewer</option>
                     <option value="member">member</option>
@@ -110,7 +110,7 @@ export function UsersTable({ users, currentUser }: { users: LpUser[]; currentUse
                         defaultValue={u.role}
                         onChange={(e) => e.currentTarget.form?.requestSubmit()}
                         disabled={self}
-                        className="border-input bg-transparent h-8 rounded-md border px-2 text-xs disabled:opacity-50"
+                        className="h-8 rounded-md border border-input bg-transparent px-2 text-xs disabled:opacity-50"
                       >
                         <option value="viewer">viewer</option>
                         <option value="member">member</option>

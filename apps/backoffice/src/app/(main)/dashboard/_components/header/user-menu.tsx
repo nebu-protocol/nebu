@@ -18,9 +18,9 @@ export function UserMenu({ username, role }: { username: string; role: string })
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="hover:bg-accent flex items-center gap-2 rounded-md py-1 pr-1 pl-2 transition-colors"
+          className="flex items-center gap-2 rounded-md py-1 pr-1 pl-2 transition-colors hover:bg-accent"
         >
-          <span className="hidden text-sm font-medium sm:inline">{username}</span>
+          <span className="hidden font-medium text-sm sm:inline">{username}</span>
           <GeneratedAvatar name={username} size={28} className="size-7" />
         </button>
       </DropdownMenuTrigger>
@@ -30,7 +30,7 @@ export function UserMenu({ username, role }: { username: string; role: string })
             <GeneratedAvatar name={username} size={32} className="size-8 rounded-lg" />
             <div className="grid flex-1 leading-tight">
               <span className="truncate font-medium">{username}</span>
-              <span className="text-muted-foreground truncate text-xs capitalize">{role}</span>
+              <span className="truncate text-muted-foreground text-xs capitalize">{role}</span>
             </div>
           </div>
         </DropdownMenuLabel>
@@ -38,7 +38,7 @@ export function UserMenu({ username, role }: { username: string; role: string })
         <form action={logoutAction}>
           <button
             type="submit"
-            className="hover:bg-accent flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
+            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
           >
             <LogOut className="size-4" /> Log out
           </button>

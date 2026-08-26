@@ -52,7 +52,7 @@ export function NavUser({ username, role }: { readonly username: string; readonl
             <form action={logoutAction}>
               <button
                 type="submit"
-                className="hover:bg-accent flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
               >
                 <LogOut className="size-4" /> Log out
               </button>
