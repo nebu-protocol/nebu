@@ -6,6 +6,7 @@ import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
 import { ADDRESSES, EXIT } from '../../config/index.ts'
 import { burnLive, swapToEthLive } from '../executor/live.ts'
+import { resolveExitCfg } from './risk.ts'
 
 const stateViewAbi = parseAbi([
   'function getSlot0(bytes32 poolId) view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee)',
@@ -75,6 +76,11 @@ type Row = {
   tick_spacing: number
   hooks: string
   enc_pk: string
+  risk_profile: string | null
+  risk_stop_loss: number | null
+  risk_price_stop: number | null
+  risk_tp_arm: number | null
+  risk_tp_trail: number | null
 }
 
 /**
@@ -88,7 +94,8 @@ export async function run() {
   const positions = db
     .prepare(
       `SELECT p.id, p.wallet, p.pool_id, p.token_id, p.tick_lower, p.tick_upper, p.net_pct, p.peak_net_pct,
-              po.currency0, po.currency1, po.fee, po.tick_spacing, po.hooks, w.enc_pk
+              po.currency0, po.currency1, po.fee, po.tick_spacing, po.hooks, w.enc_pk,
+              w.risk_profile, w.risk_stop_loss, w.risk_price_stop, w.risk_tp_arm, w.risk_tp_trail
        FROM positions p
        JOIN pools po ON po.pool_id = p.pool_id
        JOIN wallets w ON lower(w.address) = lower(p.wallet)
@@ -115,7 +122,7 @@ export async function run() {
     } catch {
       continue // gagal baca harga — jangan ambil keputusan
     }
-    const reason = exitReason(p.net_pct, p.peak_net_pct, tick, p.tick_lower, p.tick_upper)
+    const reason = exitReason(p.net_pct, p.peak_net_pct, tick, p.tick_lower, p.tick_upper, resolveExitCfg(p))
     if (!reason) continue
     log(`EXIT ${p.pool_id.slice(0, 10)} pos#${p.id}: ${reason}`)
 

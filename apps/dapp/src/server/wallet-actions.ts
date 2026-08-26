@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
 import { getBalanceEth } from "@/lib/lpdata";
+import type { RiskCustom } from "@/lib/risk";
 import { encryptSecret, getKeySecret } from "@/server/lpbot-crypto";
 import { getSiweAddress } from "@/server/siwe";
 
@@ -182,6 +183,11 @@ export type OwnedWallet = {
   max_per_pool_eth: number;
   automation: number;
   autoswap: number;
+  risk_profile: string | null;
+  risk_stop_loss: number | null;
+  risk_price_stop: number | null;
+  risk_tp_arm: number | null;
+  risk_tp_trail: number | null;
 } | null;
 
 export async function getOwnedWallet(): Promise<OwnedWallet> {
@@ -190,9 +196,48 @@ export async function getOwnedWallet(): Promise<OwnedWallet> {
   return withDb((db) => {
     const w = db
       .prepare(
-        "SELECT address, name, fund_eth, max_per_pool_eth, automation, autoswap FROM wallets WHERE lower(owner) = ?",
+        `SELECT address, name, fund_eth, max_per_pool_eth, automation, autoswap,
+                risk_profile, risk_stop_loss, risk_price_stop, risk_tp_arm, risk_tp_trail
+         FROM wallets WHERE lower(owner) = ?`,
       )
       .get(owner) as OwnedWallet;
     return w ? { ...w } : null;
   });
+}
+
+const clamp = (n: number, lo: number, hi: number) => Math.min(Math.max(n, lo), hi);
+
+/**
+ * Set profil risk manager agent wallet: safe (default) / aggressive / custom.
+ * Bot (exit-manager) baca kolom ini per-wallet. Custom di-clamp ke rentang aman.
+ */
+export async function setRiskProfileAction(
+  profile: "safe" | "aggressive" | "custom",
+  custom?: RiskCustom,
+): Promise<void> {
+  const owner = await requireSiwe();
+  if (profile === "custom") {
+    if (!custom) return;
+    const sl = clamp(Number(custom.stopLoss), -90, -1);
+    const ps = clamp(Number(custom.priceStop), 1, 90);
+    const arm = clamp(Number(custom.tpArm), 1, 500);
+    const trail = clamp(Number(custom.tpTrail), 1, 200);
+    if ([sl, ps, arm, trail].some((v) => !Number.isFinite(v))) return;
+    withDb((db) =>
+      db
+        .prepare(
+          "UPDATE wallets SET risk_profile='custom', risk_stop_loss=?, risk_price_stop=?, risk_tp_arm=?, risk_tp_trail=? WHERE lower(owner) = ?",
+        )
+        .run(sl, ps, arm, trail, owner),
+    );
+  } else if (profile === "safe" || profile === "aggressive") {
+    withDb((db) =>
+      db
+        .prepare(
+          "UPDATE wallets SET risk_profile=?, risk_stop_loss=NULL, risk_price_stop=NULL, risk_tp_arm=NULL, risk_tp_trail=NULL WHERE lower(owner) = ?",
+        )
+        .run(profile, owner),
+    );
+  }
+  revalidatePath("/portfolio");
 }

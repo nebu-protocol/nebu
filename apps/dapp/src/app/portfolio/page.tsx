@@ -23,6 +23,7 @@ import { ActivityTable } from "./activity-table";
 import { ManagePanel } from "./manage-panel";
 import { MobileManage } from "./mobile-manage";
 import { PortfolioClient } from "./portfolio-client";
+import { RiskCard } from "./risk-card";
 
 export const metadata: Metadata = { title: "Portfolio" };
 export const dynamic = "force-dynamic";
@@ -157,6 +158,16 @@ async function ManagedView({ address }: { address: string }) {
               <span className="text-soft">· {botStatus.live} aksi on-chain</span>
             ) : null}
           </div>
+        )}
+
+        {agent && (
+          <RiskCard
+            profile={owned?.risk_profile ?? null}
+            stopLoss={owned?.risk_stop_loss ?? null}
+            priceStop={owned?.risk_price_stop ?? null}
+            tpArm={owned?.risk_tp_arm ?? null}
+            tpTrail={owned?.risk_tp_trail ?? null}
+          />
         )}
 
       <PortfolioChart

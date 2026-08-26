@@ -8,8 +8,7 @@ export function Header() {
   return (
     <header className="border-line/60 sticky top-0 z-40 border-b bg-white/80 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <div className="flex items-center gap-3 sm:gap-6">
-          <MobileNav />
+        <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 font-semibold">
             <Image src="/lp-logo.png" alt="LP Bot" width={24} height={24} className="size-6 rounded-md" />
             LP Bot
@@ -24,6 +23,7 @@ export function Header() {
             <Image src="/robinhood-chain.png" alt="Robinhood Chain" width={18} height={18} className="rounded-full" />
           </span>
           <WalletButton />
+          <MobileNav />
         </div>
       </div>
     </header>

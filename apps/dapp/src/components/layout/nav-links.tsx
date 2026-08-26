@@ -71,7 +71,7 @@ export function MobileNav() {
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 z-30 mt-2 w-48 overflow-hidden rounded-2xl border border-line/60 bg-white p-2 shadow-xl">
+        <div className="absolute right-0 z-30 mt-2 w-48 overflow-hidden rounded-2xl border border-line/60 bg-white p-2 shadow-xl">
           {NAV.map((n) => (
             <Link
               key={n.href}

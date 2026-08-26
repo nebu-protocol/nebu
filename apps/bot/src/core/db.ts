@@ -190,6 +190,12 @@ export function openDb(path: string = DB_PATH): DatabaseSync {
     'ALTER TABLE positions ADD COLUMN pnl_ts INTEGER',
     // puncak net_pct (high-water mark) untuk trailing take-profit
     'ALTER TABLE positions ADD COLUMN peak_net_pct REAL',
+    // risk manager per-wallet: profil + ambang custom (dipakai exit-manager)
+    "ALTER TABLE wallets ADD COLUMN risk_profile TEXT DEFAULT 'safe'",
+    'ALTER TABLE wallets ADD COLUMN risk_stop_loss REAL',
+    'ALTER TABLE wallets ADD COLUMN risk_price_stop REAL',
+    'ALTER TABLE wallets ADD COLUMN risk_tp_arm REAL',
+    'ALTER TABLE wallets ADD COLUMN risk_tp_trail REAL',
     // jumlah token1 (leg non-ETH) untuk aktivitas — human-readable
     'ALTER TABLE executions ADD COLUMN amount_token1 REAL',
   ]) {
