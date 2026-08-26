@@ -1,7 +1,21 @@
+import { ADDRESSES } from '../../config/index.ts'
 import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
 
 const EXPLORER = 'https://robinhoodchain.blockscout.com'
+
+// Kontrak bot: ETH balik dari swap/burn lewat kontrak2 ini (biasanya INTERNAL tx,
+// tak masuk txlist normal) — kalau muncul sbg pengirim tx normal, JANGAN hitung deposit.
+const BOT_CONTRACTS = new Set(
+  [
+    ADDRESSES.universalRouter,
+    ADDRESSES.positionManager,
+    ADDRESSES.poolManager,
+    ADDRESSES.permit2,
+    ADDRESSES.quoter,
+    ADDRESSES.stateView,
+  ].map((a) => a.toLowerCase()),
+)
 
 type Tx = { from?: string; to?: string; value?: string }
 
@@ -34,7 +48,9 @@ export async function run() {
         const to = (t.to || '').toLowerCase()
         const v = Number(t.value || '0') / 1e18
         if (v <= 0) continue
-        if (to === A && f === O) dep += v
+        // Masuk dari EOA mana pun (bukan kontrak bot) = DEPOSIT (user bisa setor dari
+        // >1 wallet; ETH balik bot = internal tx, tak di sini). Keluar ke owner = withdraw.
+        if (to === A && f !== A && !BOT_CONTRACTS.has(f)) dep += v
         else if (f === A && to === O) wd += v
       }
       db.prepare('UPDATE wallets SET deposited_eth = ?, withdrawn_eth = ? WHERE lower(address) = ?').run(dep, wd, A)
