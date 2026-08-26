@@ -478,6 +478,16 @@ export async function run() {
         log(`skip ${plan.poolId.slice(0, 10)}: cooldown re-entry (${Math.round((now - lastExit.t) / 60)}m < ${REENTRY_COOLDOWN_S / 60}m)`)
         continue
       }
+      // Blacklist repeat-dumper: strategist rank by APR terus pilih pool yg SAMA (mis.
+      // STONKBROKER), cooldown lewat → masuk lagi → dump lagi (-35% berulang). Kalau
+      // pool ini sudah bikin ≥2 rugi nyata (net ≤ -15%) di wallet ini → STOP masuk.
+      const dumps = db
+        .prepare("SELECT COUNT(*) n FROM positions WHERE wallet=? AND pool_id=? AND status='CLOSED' AND net_pct <= -15")
+        .get(w.address, plan.poolId) as { n: number }
+      if (dumps.n >= 2) {
+        log(`skip ${plan.poolId.slice(0, 10)}: repeat-dumper (${dumps.n}× rugi ≤ -15% — blacklist)`)
+        continue
+      }
 
       const amount0 = BigInt(Math.round((plan.totalEth - plan.swapEth) * 1e18))
 
