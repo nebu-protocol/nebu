@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { decodeFunctionData, parseAbi } from 'viem'
 import { encryptSecret, decryptSecret, hashPassword, verifyPassword } from '../src/core/crypto.ts'
-import { planEntries, encodeV4SwapEthIn } from '../src/modules/executor/executor.ts'
+import { bankrollMinEth, planEntries, encodeV4SwapEthIn } from '../src/modules/executor/executor.ts'
 import { ADDRESSES, NATIVE } from '../src/config/index.ts'
 
 test('crypto: roundtrip encrypt/decrypt, dan payload dimanipulasi -> gagal', () => {
@@ -67,6 +67,28 @@ test('planEntries: autoswap off -> swapEth 0; fund 0 -> tidak ada plan', () => {
   const enters = [{ poolId: '0xa', sizeFraction: 0.5 }]
   assert.equal(planEntries(enters, { fund_eth: 1, max_per_pool_eth: 1, autoswap: 0 })[0]!.swapEth, 0)
   assert.equal(planEntries(enters, { fund_eth: 0, max_per_pool_eth: 1, autoswap: 1 }).length, 0)
+})
+
+test('bankrollMinEth: bankroll kecil → posisi ≥ target (sedikit tapi besar)', () => {
+  const floor = 0.0005 // ~$1 @ $2000/ETH
+  // fund 0.003 ETH = $6, target $3 → desired 2 → 0.0015 ETH/posisi (~$3), bukan $1
+  assert.ok(Math.abs(bankrollMinEth(0.003, 2000, floor, 3, 5) - 0.0015) < 1e-9)
+})
+
+test('bankrollMinEth: dibatasi jumlah kandidat', () => {
+  const floor = 0.0005
+  // 1 kandidat saja → seluruh dana ke 1 posisi
+  assert.ok(Math.abs(bankrollMinEth(0.003, 2000, floor, 3, 1) - 0.003) < 1e-9)
+})
+
+test('bankrollMinEth: bankroll besar dibatasi kandidat (maxPools)', () => {
+  const floor = 0.0005
+  // $100 fund, target $3 → floor(33) tapi kandidat 8 → 0.05/8 = 0.00625 ETH/posisi
+  assert.ok(Math.abs(bankrollMinEth(0.05, 2000, floor, 3, 8) - 0.00625) < 1e-9)
+})
+
+test('bankrollMinEth: tanpa harga ETH → floor', () => {
+  assert.equal(bankrollMinEth(0.003, 0, 0.0005, 3, 5), 0.0005)
 })
 
 test('encodeV4SwapEthIn: calldata valid untuk Universal Router execute', () => {

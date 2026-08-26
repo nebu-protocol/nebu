@@ -4,7 +4,15 @@ import { client } from '../../core/chain.ts'
 import { decryptSecret } from '../../core/crypto.ts'
 import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
-import { ADDRESSES, MIN_POSITION_USD, NATIVE, REENTRY_COOLDOWN_S, robinhoodChain, RPC_URL } from '../../config/index.ts'
+import {
+  ADDRESSES,
+  MIN_POSITION_USD,
+  NATIVE,
+  REENTRY_COOLDOWN_S,
+  robinhoodChain,
+  RPC_URL,
+  TARGET_POSITION_USD,
+} from '../../config/index.ts'
 import { encodeMintPosition } from './mint.ts'
 import { encodeBurnPosition } from './burn.ts'
 import { burnLive, mintLive, swapToEthLive } from './live.ts'
@@ -49,6 +57,24 @@ export function planEntries(enters: EntryDecision[], w: WalletFunds, minEth = 0)
     })
   }
   return plans
+}
+
+/**
+ * Ukuran posisi minimum SADAR-BANKROLL (pure, diuji). Riset: posisi ~$1 dimakan fee →
+ * pecah dana ke posisi ≥ targetPosUsd, dibatasi jumlah kandidat ENTER. Bankroll kecil =
+ * sedikit posisi tapi cukup besar; besar = sampai kandidat. Floor absolut = floorMinEth.
+ */
+export function bankrollMinEth(
+  effFundEth: number,
+  ethUsd: number,
+  floorMinEth: number,
+  targetPosUsd: number,
+  candidates: number,
+): number {
+  if (ethUsd <= 0) return floorMinEth
+  const fundUsd = effFundEth * ethUsd
+  const desired = Math.max(1, Math.min(Math.floor(fundUsd / targetPosUsd), candidates || 1))
+  return Math.max(floorMinEth, effFundEth / desired)
 }
 
 type PoolKeyRow = {
@@ -417,6 +443,8 @@ export async function run() {
       // RPC gagal — pakai fund tersimpan (jangan blokir siklus)
     }
 
+    // Sizing sadar-bankroll: posisi ≥ TARGET_POSITION_USD, dibatasi jumlah kandidat ENTER.
+    const posMinEth = bankrollMinEth(effFund, ethUsd, minEth, TARGET_POSITION_USD, enters.length)
     const plans = planEntries(
       enters.map((e) => ({
         poolId: e.pool_id,
@@ -424,7 +452,7 @@ export async function run() {
         widthFactor: e.width_factor,
       })),
       { ...w, fund_eth: effFund },
-      minEth,
+      posMinEth,
     )
     for (const plan of plans) {
       const now = Math.floor(Date.now() / 1000)

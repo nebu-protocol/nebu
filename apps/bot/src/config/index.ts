@@ -39,6 +39,10 @@ export const NATIVE = '0x0000000000000000000000000000000000000000'
 
 /** Ukuran minimal per posisi/rebalance dalam USD (default $1) — hindari dust. */
 export const MIN_POSITION_USD = Number(process.env.MIN_POSITION_USD ?? 1)
+// Sizing sadar-bankroll (riset exit): posisi ~$1 dimakan fee 2× swap + slippage → EV
+// negatif. Target ukuran posisi ≥ ini biar lewat lantai biaya; di bankroll kecil = lebih
+// sedikit posisi tapi cukup besar (riset: $6-20 → 1-2 posisi, bukan 6× $1).
+export const TARGET_POSITION_USD = Number(process.env.TARGET_POSITION_USD ?? 3)
 
 /**
  * Manajemen exit LP — PnL pool meme DIDOMINASI harga token (bukan fee), jadi kunci
