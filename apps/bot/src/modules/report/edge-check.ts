@@ -36,7 +36,10 @@ export async function run() {
   const nets = (
     db
       .prepare(
-        `SELECT net_pct FROM positions WHERE status='CLOSED' AND net_pct IS NOT NULL
+        // HANYA exit ter-REALISASI (exit_value_eth = ETH nyata yg balik). net_pct posisi
+        // tanpa ini = MARK (nilai exit token ilikuid di harga pool) yg jarang terwujud →
+        // bikin win-rate palsu tinggi. Realized-only = jujur & cocok GMGN (win-rate nyata).
+        `SELECT net_pct FROM positions WHERE status='CLOSED' AND exit_value_eth IS NOT NULL
          ORDER BY exit_ts DESC LIMIT ?`,
       )
       .all(WINDOW) as { net_pct: number }[]

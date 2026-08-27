@@ -190,6 +190,7 @@ export type OwnedWallet = {
   risk_tp_trail: number | null;
   deposited_eth: number | null; // total ETH disetor owner (ledger on-chain)
   withdrawn_eth: number | null; // total ETH ditarik ke owner
+  token_holdings_eth: number | null; // nilai ETH token ERC20 lepas (stuck/sisa mint)
 } | null;
 
 export async function getOwnedWallet(): Promise<OwnedWallet> {
@@ -200,7 +201,7 @@ export async function getOwnedWallet(): Promise<OwnedWallet> {
       .prepare(
         `SELECT address, name, fund_eth, max_per_pool_eth, automation, autoswap,
                 risk_profile, risk_stop_loss, risk_price_stop, risk_tp_arm, risk_tp_trail,
-                deposited_eth, withdrawn_eth
+                deposited_eth, withdrawn_eth, token_holdings_eth
          FROM wallets WHERE lower(owner) = ?`,
       )
       .get(owner) as OwnedWallet;

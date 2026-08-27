@@ -87,8 +87,9 @@ async function ManagedView({ address }: { address: string }) {
   const edgeHist = agent ? getEdgeHistory() : [];
   const liveMode = process.env.EXECUTOR_LIVE === "1";
   const estApr = getEstApr();
-  // Total nilai = saldo idle agent + nilai posisi OPEN (on-chain).
-  const totalEth = (balanceEth ?? 0) + (realPnl?.valueEth ?? 0);
+  // Total nilai = saldo idle agent + nilai posisi OPEN (on-chain) + token ERC20 lepas
+  // (stuck/sisa mint). Holdings token dihitung GMGN; tanpa ini PnL kita salah-rendah.
+  const totalEth = (balanceEth ?? 0) + (realPnl?.valueEth ?? 0) + (owned?.token_holdings_eth ?? 0);
   const totalUsd = p.ethUsd ? totalEth * p.ethUsd : null;
   // PnL SEBENARNYA (berbasis SALDO): nilai total sekarang − net setoran. Ground truth
   // (menangkap gas + slippage otomatis), bukan penjumlahan per-posisi yg bisa over-count.

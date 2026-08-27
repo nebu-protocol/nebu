@@ -203,6 +203,8 @@ export function openDb(path: string = DB_PATH): DatabaseSync {
     // Ledger deposit/withdraw on-chain (dari owner) → PnL berbasis SALDO yg akurat
     'ALTER TABLE wallets ADD COLUMN deposited_eth REAL DEFAULT 0',
     'ALTER TABLE wallets ADD COLUMN withdrawn_eth REAL DEFAULT 0',
+    // Nilai ETH token ERC20 lepas (stuck/sisa mint, BUKAN yg di LP) → PnL saldo lengkap (cocok GMGN)
+    'ALTER TABLE wallets ADD COLUMN token_holdings_eth REAL DEFAULT 0',
     // risk manager per-wallet: profil + ambang custom (dipakai exit-manager)
     "ALTER TABLE wallets ADD COLUMN risk_profile TEXT DEFAULT 'safe'",
     'ALTER TABLE wallets ADD COLUMN risk_stop_loss REAL',
