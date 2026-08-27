@@ -1,9 +1,21 @@
 import { encodeAbiParameters, keccak256, parseAbi } from 'viem'
-import { ADDRESSES } from '../../config/index.ts'
+import { ADDRESSES, NATIVE } from '../../config/index.ts'
 import { client } from '../../core/chain.ts'
-import { amountsForLiquidity, sqrtRatioX96AtTick } from '../executor/liquidity-math.ts'
+import {
+  amountsForLiquidity,
+  liquidityForAmounts,
+  rangeFromWidth,
+  sqrtRatioX96AtTick,
+} from '../executor/liquidity-math.ts'
+import { ensureApprovals, tokenIdFromLogs, wcFor } from '../executor/live.ts'
 import type { DexAdapter } from './adapter.ts'
 import type { PoolRef } from './types.ts'
+import {
+  encodeInfinityBurn,
+  encodeInfinityMint,
+  encodeInfinitySwapToNative,
+  encodeParameters,
+} from './pancake-infinity-encode.ts'
 
 /**
  * Adapter PancakeSwap Infinity (CLAMM) di BSC — target utama hackathon BNB.
@@ -17,11 +29,13 @@ import type { PoolRef } from './types.ts'
  */
 
 const Q96 = 2n ** 96n
+const SLIPPAGE_BPS = BigInt(process.env.INFI_SLIPPAGE_BPS ?? 500) // 5% — meme ilikuid, exit prioritas
 
 const clPoolManagerAbi = parseAbi([
   'function getSlot0(bytes32 id) view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee)',
   'function getPosition(bytes32 id, address owner, int24 tickLower, int24 tickUpper, bytes32 salt) view returns (uint128 liquidity, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128)',
 ])
+const erc20Abi = parseAbi(['function balanceOf(address) view returns (uint256)'])
 
 /**
  * poolId Infinity = keccak256 dari 6 field PoolKey (0xc0 byte) urut:
@@ -30,7 +44,7 @@ const clPoolManagerAbi = parseAbi([
  * untuk write; untuk read poolId sudah tersimpan dari discovery.
  */
 export function infinityPoolId(pool: PoolRef): `0x${string}` {
-  const parameters = (`0x${(BigInt(pool.tick_spacing) << 16n).toString(16).padStart(64, '0')}`) as `0x${string}`
+  const parameters = encodeParameters(pool.tick_spacing)
   return keccak256(
     encodeAbiParameters(
       [
@@ -53,11 +67,16 @@ export function infinityPoolId(pool: PoolRef): `0x${string}` {
   )
 }
 
-const notImplemented = (op: string) => {
-  throw new Error(
-    `PancakeInfinityAdapter.${op}: write path belum diimplementasi (encoding modifyLiquidities Infinity + Universal Router). Sedang dibangun.`,
-  )
-}
+const balanceOf = (token: `0x${string}`, owner: `0x${string}`) =>
+  client.readContract({ address: token, abi: erc20Abi, functionName: 'balanceOf', args: [owner] }) as Promise<bigint>
+
+const rawSlot0 = (poolId: string) =>
+  client.readContract({
+    address: ADDRESSES.clPoolManager,
+    abi: clPoolManagerAbi,
+    functionName: 'getSlot0',
+    args: [poolId as `0x${string}`],
+  }) as Promise<readonly [bigint, number, number, number]>
 
 export const pancakeInfinityAdapter: DexAdapter = {
   kind: 'pancake-infinity',
@@ -117,7 +136,109 @@ export const pancakeInfinityAdapter: DexAdapter = {
     }
   },
 
-  mint: () => notImplemented('mint'),
-  burn: () => notImplemented('burn'),
-  swapToNative: () => notImplemented('swapToNative'),
+  async mint(opts) {
+    const token1 = opts.pool.currency1 as `0x${string}`
+    const amount1 = await balanceOf(token1, opts.account.address)
+    if (amount1 <= 0n) throw new Error('token1 balance 0 — swap belum settle?')
+
+    const [sqrtPriceX96, tick] = await rawSlot0(opts.poolId) // harga LIVE (snapshot bisa basi)
+    const { tickLower, tickUpper } = rangeFromWidth(tick, opts.pool.tick_spacing, opts.widthFactor)
+    const raw = liquidityForAmounts(
+      sqrtPriceX96,
+      sqrtRatioX96AtTick(tickLower),
+      sqrtRatioX96AtTick(tickUpper),
+      opts.amount0Wei,
+      amount1,
+    )
+    if (raw <= 0n) throw new Error('liquidity 0 (amount/range)')
+
+    await ensureApprovals(opts.account, token1, amount1, ADDRESSES.clPositionManager)
+
+    // Haircut adaptif (liquidity-math sqrt Math.pow overestimate L → settle revert):
+    // coba haircut makin besar sampai preflight lolos (gratis), baru kirim.
+    const mk = (L: bigint) =>
+      encodeInfinityMint({
+        pool: opts.pool,
+        tickLower,
+        tickUpper,
+        liquidity: L,
+        amount0Max: opts.amount0Wei,
+        amount1Max: amount1,
+        owner: opts.account.address,
+        deadline: opts.deadline,
+      })
+    let chosen: { L: bigint; tx: ReturnType<typeof mk> } | null = null
+    let lastErr: unknown
+    for (const hc of [99n, 98n, 96n, 92n, 85n]) {
+      const L = (raw * hc) / 100n
+      if (L <= 0n) continue
+      const tx = mk(L)
+      try {
+        await client.call({ account: opts.account.address, to: tx.to, data: tx.data, value: tx.value })
+        chosen = { L, tx }
+        break
+      } catch (e) {
+        lastErr = e
+      }
+    }
+    if (!chosen) throw lastErr ?? new Error('mint preflight gagal di semua haircut')
+
+    const wc = wcFor(opts.account)
+    const hash = await wc.sendTransaction({ to: chosen.tx.to, data: chosen.tx.data, value: chosen.tx.value })
+    const receipt = await client.waitForTransactionReceipt({ hash })
+    return {
+      hash,
+      tokenId: tokenIdFromLogs(receipt.logs, ADDRESSES.clPositionManager),
+      tickLower,
+      tickUpper,
+      liquidity: chosen.L,
+      amount1,
+      status: receipt.status,
+    }
+  },
+
+  async burn(opts) {
+    const tx = encodeInfinityBurn({
+      tokenId: opts.tokenId,
+      amount0Min: 0n,
+      amount1Min: 0n,
+      currency0: opts.currency0,
+      currency1: opts.currency1,
+      recipient: opts.account.address,
+      deadline: opts.deadline,
+    })
+    await client.call({ account: opts.account.address, to: tx.to, data: tx.data, value: 0n }) // preflight
+    const wc = wcFor(opts.account)
+    const hash = await wc.sendTransaction({ to: tx.to, data: tx.data, value: 0n })
+    const receipt = await client.waitForTransactionReceipt({ hash })
+    return { hash, status: receipt.status }
+  },
+
+  async swapToNative(opts) {
+    if (opts.pool.currency0 !== NATIVE) return null
+    const token1 = opts.pool.currency1 as `0x${string}`
+    const amountIn = await balanceOf(token1, opts.account.address)
+    if (amountIn <= 0n) return null
+
+    await ensureApprovals(opts.account, token1, amountIn, ADDRESSES.universalRouter)
+
+    // minOut dari harga spot (slot0) × (1 − slippage). price=(sqrtP/Q96)²=token1/token0,
+    // token0_out ≈ amountIn/price. ponytail: pakai spot (bukan CLQuoter) — cukup utk EXIT
+    // posisi kecil; upgrade ke quoter kalau impact besar. Preflight menjaga dari revert.
+    const [sqrtP] = await rawSlot0(
+      // poolId dari PoolKey (reads pakai poolId tersimpan; di sini derive dari pool)
+      infinityPoolId(opts.pool),
+    )
+    if (sqrtP <= 0n) return null
+    const priceX192 = sqrtP * sqrtP // token1/token0 × 2^192
+    const grossOut = (amountIn * Q96 * Q96) / priceX192 // token0 (native) sebelum impact/fee
+    const minOut = (grossOut * (10_000n - SLIPPAGE_BPS)) / 10_000n
+
+    const tx = encodeInfinitySwapToNative({ pool: opts.pool, amountInWei: amountIn, minOutWei: minOut, deadline: opts.deadline })
+    await client.call({ account: opts.account.address, to: tx.to, data: tx.data, value: 0n }) // preflight
+    const wc = wcFor(opts.account)
+    const hash = await wc.sendTransaction({ to: tx.to, data: tx.data, value: 0n })
+    const receipt = await client.waitForTransactionReceipt({ hash })
+    return { hash, status: receipt.status, ethOut: grossOut, amountIn }
+  },
 }

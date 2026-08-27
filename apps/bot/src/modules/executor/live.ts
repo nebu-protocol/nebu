@@ -187,7 +187,8 @@ export function tokenIdFromLogs(
 
 // RPC kadang 429 pada burst — fallback berurutan + retry backoff supaya broadcast tembus.
 // Chain aktif dari profil (config CHAIN) — bukan hardcode Robinhood, biar jalan di BSC juga.
-const wcFor = (account: Account) =>
+// Exported: helper generik (bukan v4-specific) yg dipakai ulang adapter Infinity.
+export const wcFor = (account: Account) =>
   createWalletClient({
     account,
     chain: ACTIVE_CHAIN,
@@ -197,8 +198,8 @@ const wcFor = (account: Account) =>
     ),
   })
 
-/** Pastikan `spender` bisa menarik token via Permit2 (idempotent). Default PositionManager. */
-async function ensureApprovals(
+/** Pastikan `spender` bisa menarik token via Permit2 (idempotent). Generik lintas-DEX. */
+export async function ensureApprovals(
   account: Account,
   token1: `0x${string}`,
   needed: bigint,
