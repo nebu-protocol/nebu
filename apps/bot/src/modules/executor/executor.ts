@@ -8,6 +8,7 @@ import { encodeMintPosition } from './mint.ts'
 import { encodeBurnPosition } from './burn.ts'
 import { wcFor } from './live.ts'
 import { getDexAdapter } from '../dex/index.ts'
+import { withVault } from '../dex/vault-adapter.ts'
 import {
   liquidityForAmounts,
   rangeFromWidth,
@@ -180,9 +181,12 @@ export async function run() {
     address: string
     name: string
     enc_pk: string
+    vault_address: string | null
   } & WalletFunds
   const wallets = db
-    .prepare('SELECT address, name, enc_pk, fund_eth, max_per_pool_eth, autoswap FROM wallets WHERE automation = 1')
+    .prepare(
+      'SELECT address, name, enc_pk, fund_eth, max_per_pool_eth, autoswap, vault_address FROM wallets WHERE automation = 1',
+    )
     .all() as WalletRow[]
   if (wallets.length === 0) {
     log('executor: tidak ada wallet dengan automation aktif — selesai')
@@ -235,6 +239,11 @@ export async function run() {
   )
 
   for (const w of wallets) {
+    // Vault-mode: kalau wallet punya LpVault, semua write LP lewat vault (dana di vault,
+    // agent sign tapi tak bisa kuras). Balance sizing dibaca dari alamat vault. NULL = langsung.
+    const vault = w.vault_address && /^0x[0-9a-fA-F]{40}$/.test(w.vault_address) ? (w.vault_address as `0x${string}`) : null
+    const walletDex = vault ? withVault(dex, vault) : dex
+    const fundAddr = (vault ?? w.address) as `0x${string}`
     // Decrypt key sekali per wallet kalau live; verifikasi address cocok.
     let account: ReturnType<typeof privateKeyToAccount> | null = null
     if (live) {
@@ -266,7 +275,7 @@ export async function run() {
         const now = Math.floor(Date.now() / 1000)
         const amount0 = BigInt(Math.round(minEth * 1e18))
         try {
-          const m = await dex.mint({
+          const m = await walletDex.mint({
             account,
             poolId: s.pool_id,
             pool: s,
@@ -306,7 +315,7 @@ export async function run() {
             continue
           }
           try {
-            const b = await dex.burn({
+            const b = await walletDex.burn({
               account,
               tokenId: BigInt(p.token_id),
               currency0: ex.currency0 as `0x${string}`,
@@ -334,7 +343,7 @@ export async function run() {
         // Setelah burn: token1 kembali ke agent → swap balik ke ETH biar bisa di-withdraw.
         if (burnedAny) {
           try {
-            const s = await dex.swapToNative({ account, pool: ex, deadline: BigInt(now + 600) })
+            const s = await walletDex.swapToNative({ account, pool: ex, deadline: BigInt(now + 600) })
             if (s)
               recordTok.run(now, w.address, ex.pool_id, 'SWAP_OUT', Number(s.ethOut) / 1e18, s.hash,
                 s.status === 'success' ? 'CONFIRMED' : 'FAILED', 'token1 -> ETH (exit)',
@@ -354,7 +363,7 @@ export async function run() {
     // mencoba deploy lebih dari yang benar-benar dimiliki. Berlaku dapp & backoffice.
     let effFund = w.fund_eth
     try {
-      const balWei = await client.getBalance({ address: w.address as `0x${string}` })
+      const balWei = await client.getBalance({ address: fundAddr })
       const balEth = Number(balWei) / 1e18
       // Sisakan buffer gas (swap + mint = 2 tx) — JANGAN deploy 100% saldo, atau mint
       // gagal "insufficient funds" (bug sizing sadar-bankroll: desired=1 → posMinEth =
@@ -413,7 +422,7 @@ export async function run() {
       const finalizeMint = async () => {
         if (!account) return
         try {
-          const m = await dex.mint({
+          const m = await walletDex.mint({
             account,
             poolId: plan.poolId,
             pool,
@@ -456,14 +465,14 @@ export async function run() {
       const amountIn = BigInt(Math.round(plan.swapEth * 1e18))
       // Quote (via adapter DEX): null = pool tak bisa di-price (likuiditas tipis) → SKIP
       // bersih, bukan FAILED yg mengotori aktivitas.
-      const quoted = await dex.quoteFromNative(pool, amountIn)
+      const quoted = await walletDex.quoteFromNative(pool, amountIn)
       if (quoted == null) {
         log(`skip ${plan.poolId.slice(0, 10)}: quote gagal (likuiditas tipis / tak bisa di-price)`)
         continue
       }
       try {
         const minOut = (quoted * (10_000n - SLIPPAGE_BPS)) / 10_000n
-        const tx = dex.encodeSwapFromNative(pool, amountIn, minOut, BigInt(now + 600))
+        const tx = walletDex.encodeSwapFromNative(pool, amountIn, minOut, BigInt(now + 600))
 
         // Preflight (validasi calldata, saldo sintetis). Gagal = SKIP bersih (belum
         // kirim tx apa pun) — BUKAN FAILED. Cegah tx buruk sebelum menghabiskan gas.

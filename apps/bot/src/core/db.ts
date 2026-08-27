@@ -205,6 +205,9 @@ export function openDb(path: string = DB_PATH): DatabaseSync {
     'ALTER TABLE wallets ADD COLUMN withdrawn_eth REAL DEFAULT 0',
     // Nilai ETH token ERC20 lepas (stuck/sisa mint, BUKAN yg di LP) → PnL saldo lengkap (cocok GMGN)
     'ALTER TABLE wallets ADD COLUMN token_holdings_eth REAL DEFAULT 0',
+    // Alamat LpVault owner (BSC): kalau diset, bot LP lewat vault (dana di vault, agent
+    // sign tapi tak bisa kuras) — bukan langsung dari agent wallet. NULL = mode langsung.
+    'ALTER TABLE wallets ADD COLUMN vault_address TEXT',
     // risk manager per-wallet: profil + ambang custom (dipakai exit-manager)
     "ALTER TABLE wallets ADD COLUMN risk_profile TEXT DEFAULT 'safe'",
     'ALTER TABLE wallets ADD COLUMN risk_stop_loss REAL',
