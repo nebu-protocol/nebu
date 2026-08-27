@@ -2,9 +2,19 @@
 pragma solidity ^0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 import {LpVault} from "../src/LpVault.sol";
 import {LpVaultFactory} from "../src/LpVaultFactory.sol";
 import {PoolKey, IERC20} from "../src/interfaces/IInfinity.sol";
+
+interface ICLPoolManagerRead {
+    function getSlot0(bytes32 id) external view returns (uint160 sqrtPriceX96, int24 tick, uint24, uint24);
+}
+
+interface IERC721Ext {
+    function balanceOf(address) external view returns (uint256);
+    function ownerOf(uint256) external view returns (address);
+}
 
 /**
  * Integration test against REAL PancakeSwap Infinity on a BSC fork.
@@ -59,5 +69,73 @@ contract LpVaultForkTest is Test {
 
         assertLt(address(vault).balance, bnbBefore, "vault BNB should decrease");
         assertGt(IERC20(TOKEN1).balanceOf(address(vault)), tokenBefore, "swap output must land in vault");
+    }
+
+    bytes32 constant TRANSFER = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
+
+    /// Full lifecycle: swap -> mint (NFT to vault) -> burn (funds back). Needs an ARCHIVE
+    /// BSC_RPC_URL (the mint reads tick-data state a pruned node won't serve).
+    function test_fork_mint_and_burn_custody() public {
+        string memory rpc = vm.envOr("BSC_RPC_URL", string(""));
+        if (bytes(rpc).length == 0) {
+            vm.skip(true);
+            return;
+        }
+        vm.createSelectFork(rpc);
+        LpVaultFactory factory = new LpVaultFactory(CL_POSITION_MANAGER, UNIVERSAL_ROUTER, PERMIT2);
+        vm.prank(owner);
+        LpVault vault = LpVault(payable(factory.createVault(agent, 5 ether)));
+        vm.deal(address(vault), 5 ether);
+
+        PoolKey memory key = PoolKey({
+            currency0: address(0),
+            currency1: TOKEN1,
+            hooks: address(0),
+            poolManager: CL_POOL_MANAGER,
+            fee: FEE,
+            parameters: bytes32(uint256(uint24(TICK_SPACING)) << 16)
+        });
+
+        vm.prank(agent);
+        vault.swap(key, true, 0.05 ether, 0);
+        uint128 t1 = uint128(IERC20(TOKEN1).balanceOf(address(vault)));
+        assertGt(t1, 0, "have token1 to mint with");
+
+        bytes32 poolId = keccak256(abi.encode(key));
+        (, int24 tick,,) = ICLPoolManagerRead(CL_POOL_MANAGER).getSlot0(poolId);
+        int24 ts = TICK_SPACING;
+        int24 aligned = (tick / ts) * ts;
+        // Single-sided BNB range (entirely ABOVE current tick) → needs only token0=BNB.
+        // Avoids matching L to this memecoin's tiny token1 balance; still exercises the full
+        // vault.mint path (CL_MINT_POSITION + SETTLE_PAIR + SWEEP) and NFT custody.
+        int24 lower = aligned + 2 * ts;
+        int24 upper = aligned + 6 * ts;
+
+        vm.recordLogs();
+        vm.prank(agent);
+        vault.mint(key, lower, upper, 1e12, uint128(address(vault).balance), t1);
+        assertEq(IERC721Ext(CL_POSITION_MANAGER).balanceOf(address(vault)), 1, "vault MUST own the LP NFT");
+
+        uint256 tokenId = _mintedTokenId(address(vault));
+        assertEq(IERC721Ext(CL_POSITION_MANAGER).ownerOf(tokenId), address(vault), "NFT owner = vault");
+
+        uint256 tok1BeforeBurn = IERC20(TOKEN1).balanceOf(address(vault));
+        vm.prank(agent);
+        vault.burn(tokenId, key);
+        assertEq(IERC721Ext(CL_POSITION_MANAGER).balanceOf(address(vault)), 0, "NFT burned");
+        assertGe(IERC20(TOKEN1).balanceOf(address(vault)), tok1BeforeBurn, "burn returns token1 to vault");
+    }
+
+    function _mintedTokenId(address to) internal returns (uint256) {
+        VmSafe.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (
+                logs[i].emitter == CL_POSITION_MANAGER && logs[i].topics.length == 4 && logs[i].topics[0] == TRANSFER
+                    && logs[i].topics[1] == bytes32(0) && logs[i].topics[2] == bytes32(uint256(uint160(to)))
+            ) {
+                return uint256(logs[i].topics[3]);
+            }
+        }
+        revert("no mint Transfer log");
     }
 }
