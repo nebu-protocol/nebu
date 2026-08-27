@@ -31,6 +31,27 @@ contract MockERC20 {
     }
 }
 
+/// Non-standard token: approve/transfer/transferFrom return NOTHING (common on BSC).
+contract MockNonStandardToken {
+    mapping(address => uint256) public balanceOf;
+
+    function mint(address to, uint256 a) external {
+        balanceOf[to] += a;
+    }
+
+    function approve(address, uint256) external {}
+
+    function transfer(address to, uint256 a) external {
+        balanceOf[msg.sender] -= a;
+        balanceOf[to] += a;
+    }
+
+    function transferFrom(address f, address t, uint256 a) external {
+        balanceOf[f] -= a;
+        balanceOf[t] += a;
+    }
+}
+
 contract MockPermit2 {
     function approve(address, address, uint160, uint48) external {}
 }
@@ -188,19 +209,65 @@ contract LpVaultTest is Test {
         vault.mint(key, -100, 100, 1000, 2 ether, 1 ether); // amount0Max > cap
     }
 
-    // --- INVARIANT 2: recipient hardcoded to vault (agent can't redirect) ---
-    function test_mint_encodes_vault_as_owner() public {
+    // --- INVARIANT 2: recipient hardcoded to vault (decode the exact field) ---
+    function test_mint_owner_is_exactly_vault() public {
         vm.prank(agent);
         vault.mint(key, -100, 100, 1000, 0.1 ether, 1 ether);
-        // mint param encodes owner=address(this)=vault → vault address must appear as a word
-        assertTrue(_containsAddress(pm.lastPayload(), address(vault)), "mint recipient must be vault");
+        (bytes memory actions, bytes[] memory params) = abi.decode(pm.lastPayload(), (bytes, bytes[]));
+        // mintParam = (PoolKey, tickLower, tickUpper, liquidity, amount0Max, amount1Max, owner, hookData)
+        (,,,,,, address mintOwner,) =
+            abi.decode(params[0], (PoolKey, int24, int24, uint256, uint128, uint128, address, bytes));
+        assertEq(mintOwner, address(vault), "mint owner MUST be the vault");
+        assertEq(actions.length, 3, "CL_MINT+SETTLE_PAIR+SWEEP for native");
         assertEq(pm.lastValue(), 0.1 ether);
     }
 
-    function test_burn_encodes_vault_as_recipient() public {
+    function test_burn_recipient_is_exactly_vault() public {
         vm.prank(agent);
         vault.burn(42, key);
-        assertTrue(_containsAddress(pm.lastPayload(), address(vault)), "burn recipient must be vault");
+        (, bytes[] memory params) = abi.decode(pm.lastPayload(), (bytes, bytes[]));
+        // TAKE_PAIR param = (currency0, currency1, to)
+        (,, address recipient) = abi.decode(params[1], (address, address, address));
+        assertEq(recipient, address(vault), "burn recipient MUST be the vault");
+    }
+
+    // --- non-standard token handling (no bool return) ---
+    function test_nonstandard_token_withdraw_and_swap_approve() public {
+        MockNonStandardToken nst = new MockNonStandardToken();
+        nst.mint(address(vault), 100 ether);
+        // withdraw a token that returns no bool -> _safeCall tolerates it
+        vm.prank(owner);
+        vault.withdraw(address(nst), 40 ether);
+        assertEq(nst.balanceOf(owner), 40 ether);
+        // token->native swap exercises _ensureApproval on the non-standard token (no revert)
+        PoolKey memory k = key;
+        k.currency1 = address(nst);
+        vm.prank(agent);
+        vault.swap(k, false, 10 ether, 0);
+    }
+
+    function test_deposit_nonstandard_token() public {
+        MockNonStandardToken nst = new MockNonStandardToken();
+        nst.mint(address(this), 100 ether);
+        vault.depositToken(address(nst), 40 ether);
+        assertEq(nst.balanceOf(address(vault)), 40 ether);
+    }
+
+    // --- edge cases ---
+    function test_withdraw_over_balance_reverts() public {
+        vm.prank(owner);
+        vm.expectRevert(); // vault holds 10 ETH; sending 100 fails
+        vault.withdraw(address(0), 100 ether);
+    }
+
+    function test_cap_zero_blocks_native_but_allows_unwind() public {
+        vm.prank(owner);
+        vault.setMaxNotionalPerOp(0);
+        vm.prank(agent);
+        vm.expectRevert(bytes("notional cap"));
+        vault.swap(key, true, 1, 0); // native-in blocked
+        vm.prank(agent);
+        vault.swap(key, false, 1 ether, 0); // token->native un-wind still allowed
     }
 
     // --- INVARIANT 5: reentrancy ---
@@ -223,17 +290,4 @@ contract LpVaultTest is Test {
         assertEq(address(vault).balance, 13 ether);
     }
 
-    // helper: does `data` contain `addr` as a right-aligned 32-byte word?
-    function _containsAddress(bytes memory data, address addr) internal pure returns (bool) {
-        bytes32 target = bytes32(uint256(uint160(addr)));
-        if (data.length < 32) return false;
-        for (uint256 i = 0; i + 32 <= data.length; i++) {
-            bytes32 word;
-            assembly {
-                word := mload(add(add(data, 0x20), i))
-            }
-            if (word == target) return true;
-        }
-        return false;
-    }
 }

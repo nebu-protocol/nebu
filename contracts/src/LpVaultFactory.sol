@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 import {LpVault} from "./LpVault.sol";
 
@@ -20,8 +20,8 @@ contract LpVaultFactory {
     function createVault(address agent, uint256 maxNotionalPerOp) external returns (address vault) {
         require(vaultOf[msg.sender] == address(0), "vault exists");
         vault = _clone(implementation);
+        vaultOf[msg.sender] = vault; // checks-effects-interactions: record before the external init
         LpVault(payable(vault)).initialize(msg.sender, agent, maxNotionalPerOp);
-        vaultOf[msg.sender] = vault;
         emit VaultCreated(msg.sender, vault, agent);
     }
 

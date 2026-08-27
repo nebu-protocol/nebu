@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 import {
     PoolKey,
@@ -78,6 +78,9 @@ contract LpVault {
     }
 
     constructor(address clPositionManager, address universalRouter, address permit2) {
+        require(
+            clPositionManager != address(0) && universalRouter != address(0) && permit2 != address(0), "zero addr"
+        );
         CL_POSITION_MANAGER = clPositionManager;
         UNIVERSAL_ROUTER = universalRouter;
         PERMIT2 = permit2;
@@ -101,13 +104,9 @@ contract LpVault {
         emit Deposit(msg.sender, NATIVE, msg.value);
     }
 
-    /// @notice Pull ERC20 into the vault (caller must approve first). Low-level call tolerates
-    ///         non-standard BSC tokens that don't return a bool.
+    /// @notice Pull ERC20 into the vault (caller must approve first).
     function depositToken(address token, uint256 amount) external nonReentrant {
-        (bool ok, bytes memory ret) = token.call(
-            abi.encodeWithSignature("transferFrom(address,address,uint256)", msg.sender, address(this), amount)
-        );
-        require(ok && (ret.length == 0 || abi.decode(ret, (bool))), "transferFrom");
+        _safeCall(token, abi.encodeWithSelector(IERC20.transferFrom.selector, msg.sender, address(this), amount));
         emit Deposit(msg.sender, token, amount);
     }
 
@@ -117,7 +116,7 @@ contract LpVault {
             (bool ok,) = owner.call{value: amount}("");
             require(ok, "native send");
         } else {
-            require(IERC20(token).transfer(owner, amount), "erc20 send");
+            _safeCall(token, abi.encodeWithSelector(IERC20.transfer.selector, owner, amount));
         }
         emit Withdraw(token, amount);
     }
@@ -148,7 +147,7 @@ contract LpVault {
     {
         address currencyIn = zeroForOne ? key.currency0 : key.currency1;
         address currencyOut = zeroForOne ? key.currency1 : key.currency0;
-        uint256 value;
+        uint256 value = 0; // 0 for token-in ops (native value only when currency0 = native)
         if (currencyIn == NATIVE) {
             require(amountIn <= maxNotionalPerOp, "notional cap");
             value = amountIn;
@@ -188,7 +187,7 @@ contract LpVault {
         uint128 amount1Max
     ) external onlyAgentOrOwner nonReentrant {
         bool nativeIn = key.currency0 == NATIVE;
-        uint256 value;
+        uint256 value = 0; // 0 for token-in ops (native value only when currency0 = native)
         if (nativeIn) {
             require(amount0Max <= maxNotionalPerOp, "notional cap");
             value = amount0Max;
@@ -235,9 +234,15 @@ contract LpVault {
     /// @dev Two-leg Permit2 approval (token->Permit2 ERC20, Permit2->spender), once per pair.
     function _ensureApproval(address token, address spender) internal {
         if (_approved[token][spender]) return;
-        IERC20(token).approve(PERMIT2, type(uint256).max);
+        _safeCall(token, abi.encodeWithSelector(IERC20.approve.selector, PERMIT2, type(uint256).max));
         IPermit2(PERMIT2).approve(token, spender, type(uint160).max, type(uint48).max);
         _approved[token][spender] = true;
+    }
+
+    /// @dev ERC20 call tolerant of non-standard BSC tokens (no / non-bool return).
+    function _safeCall(address token, bytes memory data) internal {
+        (bool ok, bytes memory ret) = token.call(data);
+        require(ok && (ret.length == 0 || abi.decode(ret, (bool))), "token call failed");
     }
 
     function _poolId(PoolKey calldata key) internal pure returns (bytes32) {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 /// @notice Minimal, self-contained PancakeSwap Infinity (CLAMM) interfaces used by LpVault.
 /// Kept local (not the full periphery) so the vault is small and auditable.
@@ -38,6 +38,7 @@ interface IPermit2 {
 interface IERC20 {
     function approve(address spender, uint256 amount) external returns (bool);
     function transfer(address to, uint256 amount) external returns (bool);
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
 }
 
