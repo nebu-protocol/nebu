@@ -2,9 +2,11 @@ import type { AbiEvent } from 'viem'
 import type { DexKind } from '../../config/index.ts'
 import type {
   BurnParams,
+  Encoded,
   MintParams,
   MintResult,
   PoolInit,
+  PoolRef,
   PoolState,
   PositionValue,
   PositionValueParams,
@@ -40,6 +42,10 @@ export interface DexAdapter {
   burn(p: BurnParams): Promise<TxResult>
   /** Swap seluruh saldo token1 agent balik ke native; null kalau tak ada token1. */
   swapToNative(p: SwapParams): Promise<SwapResult | null>
+  /** Quote token1 keluar untuk amountIn native (untuk minOut + cek keterjangkauan harga); null = tak bisa di-price. */
+  quoteFromNative(pool: PoolRef, amountInWei: bigint): Promise<bigint | null>
+  /** Calldata swap native → token1 (leg ENTER); executor yg preflight + kirim. */
+  encodeSwapFromNative(pool: PoolRef, amountInWei: bigint, minOutWei: bigint, deadline: bigint): Encoded
 
   // --- scanner (discovery + state) ---
   /** Kontrak sumber event pool (PoolManager v4 / CLPoolManager Infinity). */

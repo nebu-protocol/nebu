@@ -13,6 +13,7 @@ import type { PoolRef } from './types.ts'
 import {
   encodeInfinityBurn,
   encodeInfinityMint,
+  encodeInfinitySwapFromNative,
   encodeInfinitySwapToNative,
   encodeParameters,
 } from './pancake-infinity-encode.ts'
@@ -256,6 +257,20 @@ export const pancakeInfinityAdapter: DexAdapter = {
     const receipt = await client.waitForTransactionReceipt({ hash })
     return { hash, status: receipt.status, ethOut: grossOut, amountIn }
   },
+
+  async quoteFromNative(pool, amountInWei) {
+    // Spot dari slot0: token1_out ≈ amountIn(native) × price, price=(sqrtP/Q96)²=token1/token0.
+    // ponytail: spot (bukan CLQuoter) — cukup utk minOut+cek keterjangkauan; preflight jaga revert.
+    try {
+      const [sqrtP] = await rawSlot0(infinityPoolId(pool))
+      if (sqrtP <= 0n) return null
+      return (amountInWei * sqrtP * sqrtP) / (Q96 * Q96)
+    } catch {
+      return null
+    }
+  },
+  encodeSwapFromNative: (pool, amountInWei, minOutWei, deadline) =>
+    encodeInfinitySwapFromNative({ pool, amountInWei, minOutWei, deadline }),
 
   // --- scanner ---
   poolManagerAddress: ADDRESSES.clPoolManager,

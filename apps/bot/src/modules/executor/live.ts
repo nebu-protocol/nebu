@@ -160,6 +160,83 @@ function encodeV4SwapTokenToEth(
   return { to: ADDRESSES.universalRouter, data, value: 0n }
 }
 
+/** Calldata Universal Router: swap exact-in native (currency0) -> token1 (leg ENTER). */
+export function encodeV4SwapEthIn(
+  pool: PoolKeyLike,
+  amountInWei: bigint,
+  minOutWei: bigint,
+  deadline: bigint,
+): { to: `0x${string}`; data: `0x${string}`; value: bigint } {
+  const c0 = pool.currency0 as `0x${string}`
+  const c1 = pool.currency1 as `0x${string}`
+  const swapParam = encodeAbiParameters(
+    [
+      {
+        type: 'tuple',
+        components: [
+          {
+            name: 'poolKey',
+            type: 'tuple',
+            components: [
+              { name: 'currency0', type: 'address' },
+              { name: 'currency1', type: 'address' },
+              { name: 'fee', type: 'uint24' },
+              { name: 'tickSpacing', type: 'int24' },
+              { name: 'hooks', type: 'address' },
+            ],
+          },
+          { name: 'zeroForOne', type: 'bool' },
+          { name: 'amountIn', type: 'uint128' },
+          { name: 'amountOutMinimum', type: 'uint128' },
+          { name: 'hookData', type: 'bytes' },
+        ],
+      },
+    ],
+    [
+      {
+        poolKey: { currency0: c0, currency1: c1, fee: pool.fee, tickSpacing: pool.tick_spacing, hooks: pool.hooks as `0x${string}` },
+        zeroForOne: true, // token0(native) -> token1
+        amountIn: amountInWei,
+        amountOutMinimum: minOutWei,
+        hookData: '0x',
+      },
+    ],
+  )
+  const settle = encodeAbiParameters([{ type: 'address' }, { type: 'uint256' }], [c0, amountInWei]) // settle native in
+  const take = encodeAbiParameters([{ type: 'address' }, { type: 'uint256' }], [c1, minOutWei]) // take token1 out
+  const input0 = encodeAbiParameters([{ type: 'bytes' }, { type: 'bytes[]' }], [ACTIONS, [swapParam, settle, take]])
+  const data = encodeFunctionData({ abi: urAbi, functionName: 'execute', args: [COMMAND_V4_SWAP, [input0], deadline] })
+  return { to: ADDRESSES.universalRouter, data, value: amountInWei }
+}
+
+/** Quote token1 keluar utk amountIn native (Quoter v4). null kalau revert (tak bisa di-price). */
+export async function quoteEthToTokenLive(pool: PoolKeyLike, amountInWei: bigint): Promise<bigint | null> {
+  try {
+    const [out] = (await client.readContract({
+      address: ADDRESSES.quoter,
+      abi: quoterAbi,
+      functionName: 'quoteExactInputSingle',
+      args: [
+        {
+          poolKey: {
+            currency0: pool.currency0 as `0x${string}`,
+            currency1: pool.currency1 as `0x${string}`,
+            fee: pool.fee,
+            tickSpacing: pool.tick_spacing,
+            hooks: pool.hooks as `0x${string}`,
+          },
+          zeroForOne: true,
+          exactAmount: amountInWei,
+          hookData: '0x',
+        },
+      ],
+    })) as readonly [bigint, bigint]
+    return out
+  } catch {
+    return null
+  }
+}
+
 // keccak256("Transfer(address,address,uint256)")
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 const MAX_UINT256 = (1n << 256n) - 1n

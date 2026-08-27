@@ -168,3 +168,49 @@ export function encodeInfinitySwapToNative(a: {
   })
   return { to: ADDRESSES.universalRouter, data, value: 0n }
 }
+
+/** INFI_SWAP: CL_SWAP_EXACT_IN_SINGLE native (currency0) -> token1. value = amountIn (native). */
+export function encodeInfinitySwapFromNative(a: {
+  pool: PoolRef
+  amountInWei: bigint
+  minOutWei: bigint
+  deadline: bigint
+}): Encoded {
+  const c0 = a.pool.currency0 as `0x${string}`
+  const c1 = a.pool.currency1 as `0x${string}`
+  const swapParam = encodeAbiParameters(
+    [
+      {
+        type: 'tuple',
+        components: [
+          { name: 'poolKey', type: 'tuple', components: poolKeyComponents },
+          { name: 'zeroForOne', type: 'bool' },
+          { name: 'amountIn', type: 'uint128' },
+          { name: 'amountOutMinimum', type: 'uint128' },
+          { name: 'hookData', type: 'bytes' },
+        ],
+      },
+    ],
+    [
+      {
+        poolKey: poolKeyStruct(a.pool),
+        zeroForOne: true, // token0(native) -> token1
+        amountIn: a.amountInWei,
+        amountOutMinimum: a.minOutWei,
+        hookData: '0x',
+      },
+    ],
+  )
+  const settle = encodeAbiParameters([{ type: 'address' }, { type: 'uint256' }], [c0, a.amountInWei])
+  const take = encodeAbiParameters([{ type: 'address' }, { type: 'uint256' }], [c1, a.minOutWei])
+  const payload = encodeAbiParameters(
+    [{ type: 'bytes' }, { type: 'bytes[]' }],
+    [toActions([CL_SWAP_EXACT_IN_SINGLE, SETTLE_ALL, TAKE_ALL]), [swapParam, settle, take]],
+  )
+  const data = encodeFunctionData({
+    abi: urAbi,
+    functionName: 'execute',
+    args: [COMMAND_INFI_SWAP, [payload], a.deadline],
+  })
+  return { to: ADDRESSES.universalRouter, data, value: a.amountInWei }
+}

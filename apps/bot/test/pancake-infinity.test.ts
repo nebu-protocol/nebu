@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   encodeInfinityBurn,
   encodeInfinityMint,
+  encodeInfinitySwapFromNative,
   encodeInfinitySwapToNative,
   encodeParameters,
 } from '../src/modules/dex/pancake-infinity-encode.ts'
@@ -62,8 +63,15 @@ test('encodeInfinityBurn: target CLPositionManager, value 0', () => {
   assert.equal(tx.value, 0n)
 })
 
-test('encodeInfinitySwapToNative: target UniversalRouter, value 0', () => {
+test('encodeInfinitySwapToNative: target UniversalRouter, value 0 (token1->native)', () => {
   const tx = encodeInfinitySwapToNative({ pool, amountInWei: 100n, minOutWei: 90n, deadline: 999n })
   assert.equal(tx.to.toLowerCase(), ADDRESSES.universalRouter.toLowerCase())
   assert.equal(tx.value, 0n)
+})
+
+test('encodeInfinitySwapFromNative: target UniversalRouter, value=amountIn (native->token1)', () => {
+  const tx = encodeInfinitySwapFromNative({ pool, amountInWei: 100n, minOutWei: 90n, deadline: 999n })
+  assert.equal(tx.to.toLowerCase(), ADDRESSES.universalRouter.toLowerCase())
+  assert.equal(tx.value, 100n) // native masuk → value = amountIn
+  assert.match(tx.data, /^0x[0-9a-f]+$/)
 })

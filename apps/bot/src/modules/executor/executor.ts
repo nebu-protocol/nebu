@@ -1,21 +1,13 @@
-import { createWalletClient, encodeAbiParameters, encodeFunctionData, http, parseAbi } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { client } from '../../core/chain.ts'
 import { decryptSecret } from '../../core/crypto.ts'
 import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
-import {
-  ADDRESSES,
-  MIN_POSITION_USD,
-  NATIVE,
-  REENTRY_COOLDOWN_S,
-  robinhoodChain,
-  RPC_URL,
-  TARGET_POSITION_USD,
-} from '../../config/index.ts'
+import { MIN_POSITION_USD, NATIVE, REENTRY_COOLDOWN_S, TARGET_POSITION_USD } from '../../config/index.ts'
 import { encodeMintPosition } from './mint.ts'
 import { encodeBurnPosition } from './burn.ts'
-import { burnLive, mintLive, swapToEthLive } from './live.ts'
+import { wcFor } from './live.ts'
+import { getDexAdapter } from '../dex/index.ts'
 import {
   liquidityForAmounts,
   rangeFromWidth,
@@ -85,83 +77,8 @@ type PoolKeyRow = {
   hooks: string
 }
 
-const urAbi = parseAbi([
-  'function execute(bytes commands, bytes[] inputs, uint256 deadline) payable',
-])
-
-const quoterAbi = parseAbi([
-  'function quoteExactInputSingle(((address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks) poolKey, bool zeroForOne, uint128 exactAmount, bytes hookData) params) returns (uint256 amountOut, uint256 gasEstimate)',
-])
-
-const COMMAND_V4_SWAP = '0x10'
-const ACTIONS = '0x060c0f' // SWAP_EXACT_IN_SINGLE, SETTLE_ALL, TAKE_ALL
-
-/** Calldata Universal Router: swap exact-in ETH (currency0) -> token1. */
-export function encodeV4SwapEthIn(
-  pool: PoolKeyRow,
-  amountInWei: bigint,
-  minOutWei: bigint,
-  deadline: bigint,
-): { to: `0x${string}`; data: `0x${string}`; value: bigint } {
-  const poolKey = {
-    currency0: pool.currency0 as `0x${string}`,
-    currency1: pool.currency1 as `0x${string}`,
-    fee: pool.fee,
-    tickSpacing: pool.tick_spacing,
-    hooks: pool.hooks as `0x${string}`,
-  }
-  const swapParam = encodeAbiParameters(
-    [
-      {
-        type: 'tuple',
-        components: [
-          {
-            name: 'poolKey',
-            type: 'tuple',
-            components: [
-              { name: 'currency0', type: 'address' },
-              { name: 'currency1', type: 'address' },
-              { name: 'fee', type: 'uint24' },
-              { name: 'tickSpacing', type: 'int24' },
-              { name: 'hooks', type: 'address' },
-            ],
-          },
-          { name: 'zeroForOne', type: 'bool' },
-          { name: 'amountIn', type: 'uint128' },
-          { name: 'amountOutMinimum', type: 'uint128' },
-          { name: 'hookData', type: 'bytes' },
-        ],
-      },
-    ],
-    [
-      {
-        poolKey,
-        zeroForOne: true,
-        amountIn: amountInWei,
-        amountOutMinimum: minOutWei,
-        hookData: '0x',
-      },
-    ],
-  )
-  const settle = encodeAbiParameters(
-    [{ type: 'address' }, { type: 'uint256' }],
-    [poolKey.currency0, amountInWei],
-  )
-  const take = encodeAbiParameters(
-    [{ type: 'address' }, { type: 'uint256' }],
-    [poolKey.currency1, minOutWei],
-  )
-  const input0 = encodeAbiParameters(
-    [{ type: 'bytes' }, { type: 'bytes[]' }],
-    [ACTIONS, [swapParam, settle, take]],
-  )
-  const data = encodeFunctionData({
-    abi: urAbi,
-    functionName: 'execute',
-    args: [COMMAND_V4_SWAP, [input0], deadline],
-  })
-  return { to: ADDRESSES.universalRouter, data, value: amountInWei }
-}
+// Swap-in encoding (ETH->token1) & quote kini lewat DexAdapter (dex.encodeSwapFromNative /
+// dex.quoteFromNative) — DEX-specific, jadi executor buta-DEX.
 
 const SLIPPAGE_BPS = 100n // 1%
 
@@ -248,6 +165,7 @@ function simulateExit(
 
 export async function run() {
   const db = openDb()
+  const dex = getDexAdapter() // adapter DEX chain aktif (Infinity/BSC atau v4/Robinhood)
   const live = process.env.EXECUTOR_LIVE === '1'
   const secret = process.env.LPBOT_KEY_SECRET
 
@@ -348,7 +266,7 @@ export async function run() {
         const now = Math.floor(Date.now() / 1000)
         const amount0 = BigInt(Math.round(minEth * 1e18))
         try {
-          const m = await mintLive({
+          const m = await dex.mint({
             account,
             poolId: s.pool_id,
             pool: s,
@@ -388,7 +306,7 @@ export async function run() {
             continue
           }
           try {
-            const b = await burnLive({
+            const b = await dex.burn({
               account,
               tokenId: BigInt(p.token_id),
               currency0: ex.currency0 as `0x${string}`,
@@ -416,7 +334,7 @@ export async function run() {
         // Setelah burn: token1 kembali ke agent → swap balik ke ETH biar bisa di-withdraw.
         if (burnedAny) {
           try {
-            const s = await swapToEthLive({ account, pool: ex, deadline: BigInt(now + 600) })
+            const s = await dex.swapToNative({ account, pool: ex, deadline: BigInt(now + 600) })
             if (s)
               recordTok.run(now, w.address, ex.pool_id, 'SWAP_OUT', Number(s.ethOut) / 1e18, s.hash,
                 s.status === 'success' ? 'CONFIRMED' : 'FAILED', 'token1 -> ETH (exit)',
@@ -495,7 +413,7 @@ export async function run() {
       const finalizeMint = async () => {
         if (!account) return
         try {
-          const m = await mintLive({
+          const m = await dex.mint({
             account,
             poolId: plan.poolId,
             pool,
@@ -536,36 +454,16 @@ export async function run() {
       }
 
       const amountIn = BigInt(Math.round(plan.swapEth * 1e18))
-      // Quote dulu (di luar try utama): kalau revert = pool tak bisa di-price
-      // (likuiditas tipis) → SKIP bersih, bukan FAILED yg mengotori aktivitas.
-      let quoted: bigint
-      try {
-        ;[quoted] = (await client.readContract({
-          address: ADDRESSES.quoter,
-          abi: quoterAbi,
-          functionName: 'quoteExactInputSingle',
-          args: [
-            {
-              poolKey: {
-                currency0: pool.currency0 as `0x${string}`,
-                currency1: pool.currency1 as `0x${string}`,
-                fee: pool.fee,
-                tickSpacing: pool.tick_spacing,
-                hooks: pool.hooks as `0x${string}`,
-              },
-              zeroForOne: true,
-              exactAmount: amountIn,
-              hookData: '0x',
-            },
-          ],
-        })) as readonly [bigint, bigint]
-      } catch {
-        log(`skip ${plan.poolId.slice(0, 10)}: quote revert (likuiditas tipis / tak bisa di-price)`)
+      // Quote (via adapter DEX): null = pool tak bisa di-price (likuiditas tipis) → SKIP
+      // bersih, bukan FAILED yg mengotori aktivitas.
+      const quoted = await dex.quoteFromNative(pool, amountIn)
+      if (quoted == null) {
+        log(`skip ${plan.poolId.slice(0, 10)}: quote gagal (likuiditas tipis / tak bisa di-price)`)
         continue
       }
       try {
         const minOut = (quoted * (10_000n - SLIPPAGE_BPS)) / 10_000n
-        const tx = encodeV4SwapEthIn(pool, amountIn, minOut, BigInt(now + 600))
+        const tx = dex.encodeSwapFromNative(pool, amountIn, minOut, BigInt(now + 600))
 
         // Preflight (validasi calldata, saldo sintetis). Gagal = SKIP bersih (belum
         // kirim tx apa pun) — BUKAN FAILED. Cegah tx buruk sebelum menghabiskan gas.
@@ -608,11 +506,7 @@ export async function run() {
           continue
         }
 
-        const wc = createWalletClient({
-          account,
-          chain: robinhoodChain,
-          transport: http(RPC_URL, { retryCount: 8, retryDelay: 1000 }),
-        })
+        const wc = wcFor(account) // chain aktif (bukan hardcode Robinhood)
         const hash = await wc.sendTransaction({ to: tx.to, data: tx.data, value: tx.value })
         record.run(now, w.address, plan.poolId, 'SWAP_IN', plan.swapEth, hash, 'SENT', null)
         log(`SENT ${hash}`)

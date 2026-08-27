@@ -2,7 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { decodeFunctionData, parseAbi } from 'viem'
 import { encryptSecret, decryptSecret, hashPassword, verifyPassword } from '../src/core/crypto.ts'
-import { bankrollMinEth, planEntries, encodeV4SwapEthIn } from '../src/modules/executor/executor.ts'
+import { bankrollMinEth, planEntries } from '../src/modules/executor/executor.ts'
+import { encodeV4SwapEthIn } from '../src/modules/executor/live.ts'
 import { ADDRESSES, NATIVE } from '../src/config/index.ts'
 
 test('crypto: roundtrip encrypt/decrypt, dan payload dimanipulasi -> gagal', () => {

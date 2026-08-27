@@ -1,7 +1,14 @@
 import { ADDRESSES } from '../../config/index.ts'
 import { initializeEvent, stateViewAbi, swapEvent } from '../../contracts/abi.ts'
 import { client } from '../../core/chain.ts'
-import { burnLive, mintLive, positionValueLive, swapToEthLive } from '../executor/live.ts'
+import {
+  burnLive,
+  encodeV4SwapEthIn,
+  mintLive,
+  positionValueLive,
+  quoteEthToTokenLive,
+  swapToEthLive,
+} from '../executor/live.ts'
 import type { DexAdapter } from './adapter.ts'
 
 /**
@@ -30,6 +37,9 @@ export const uniswapV4Adapter: DexAdapter = {
   mint: (p) => mintLive(p),
   burn: (p) => burnLive(p),
   swapToNative: (p) => swapToEthLive(p),
+  quoteFromNative: (pool, amountInWei) => quoteEthToTokenLive(pool, amountInWei),
+  encodeSwapFromNative: (pool, amountInWei, minOutWei, deadline) =>
+    encodeV4SwapEthIn(pool, amountInWei, minOutWei, deadline),
 
   // --- scanner ---
   poolManagerAddress: ADDRESSES.poolManager,

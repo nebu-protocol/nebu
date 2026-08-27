@@ -27,6 +27,8 @@ export type PositionValue = {
 }
 
 export type TxResult = { hash: `0x${string}`; status: 'success' | 'reverted' }
+/** Calldata tx tersandi (untuk preflight/kirim di executor). */
+export type Encoded = { to: `0x${string}`; data: `0x${string}`; value: bigint }
 export type MintResult = TxResult & {
   tokenId: bigint | null
   tickLower: number
