@@ -14,14 +14,16 @@ export type StrategyConfig = {
   momentumMinPct: number // tolak entry kalau harga token turun > ini (hindari LP token dump)
   momentumMaxPct: number // tolak entry kalau sudah pump vertikal > ini (mean-revert → beli puncak)
   tvlTrendMinPct: number // tolak entry kalau TVL turun > ini (likuiditas ditarik / rug)
+  demandAccelMinPct: number // tolak entry kalau permintaan memudar > ini (jadi exit-liquidity)
 }
 
 export const DEFAULT_STRATEGY: StrategyConfig = {
   minAgeDays: 3,
   minAprPct: 50,
-  // 3 (turun dari 8): riset + data aktivitas — 23 round-trip/hari di fund $6 = fee ~13%.
-  // Sedikit posisi berkonviksi > banyak churn. Bankroll-sizing tetap batasi ukuran.
-  maxPools: 3,
+  // 2 (turun dari 3): bankroll $6 → gas ($0.048/posisi) mendominasi. Sedikit posisi
+  // BESAR berkonviksi = gas teramortisasi + picker lebih pilih2 (cuma 2 terbaik). Riset:
+  // 1-2 posisi sampai stack >$100. Env MAX_POOLS untuk naikkan saat fund besar.
+  maxPools: Number(process.env.MAX_POOLS ?? 2),
   widthFactor: 1.2,
   requireNoHook: true,
   // Riset (Amberdata/DeFi-Scientist): LP = short-vol; cuma menang saat token TRENDING
@@ -35,6 +37,9 @@ export const DEFAULT_STRATEGY: StrategyConfig = {
   // (WAJIB likuiditas naik = demand nyata). Data: 9:2 stop-loss:take-profit → entry
   // masih banyak reversal; TVL-rising saring lebih tajam = entry lebih sedikit tapi bagus.
   tvlTrendMinPct: Number(process.env.TVL_TREND_MIN_PCT ?? 0),
+  // Akselerasi permintaan: tolak pool yg volume-nya MEMUDAR > 25% (pump habis → kita jadi
+  // exit-liquidity → stop-out cepat, sumber utama churn 1.1j). Ambang lunak (izinkan stabil).
+  demandAccelMinPct: Number(process.env.DEMAND_ACCEL_MIN_PCT ?? -25),
 }
 
 export type PortfolioState = {
@@ -68,7 +73,24 @@ function passesGates(r: YieldRow, cfg: StrategyConfig): string | null {
   // TVL ambruk = likuiditas ditarik / rug → jangan masuk.
   if (r.tvlTrendPct < cfg.tvlTrendMinPct)
     return `TVL ambruk ${r.tvlTrendPct.toFixed(1)}% < ${cfg.tvlTrendMinPct}%`
+  // Permintaan memudar = pump habis, kita jadi exit-liquidity → jangan masuk.
+  if (r.demandAccelPct < cfg.demandAccelMinPct)
+    return `demand memudar ${r.demandAccelPct.toFixed(1)}% < ${cfg.demandAccelMinPct}%`
   return null
+}
+
+/**
+ * Skor "demand" untuk RANKING entry (bukan gate). APR mentah tak dipakai ranking — di pool
+ * meme ilikuid fee-growth artefak bikin APR miliaran% (noise). Yang nyata = akselerasi
+ * volume + TVL naik + volume absolut + APR DI-CAP. Pilih yg demand-nya paling nyata naik.
+ */
+export function demandScore(r: YieldRow): number {
+  return (
+    Math.max(0, r.demandAccelPct) / 100 + // akselerasi volume (utama)
+    Math.max(0, r.tvlTrendPct) / 100 + // likuiditas naik = demand nyata
+    Math.log10((r.volEth ?? 0) + 1) / 3 + // volume absolut (fee potensial)
+    Math.min(r.apr20, 500) / 1000 // APR di-cap (tie-breaker kecil, bukan penggerak)
+  )
 }
 
 export function decide(
@@ -79,9 +101,11 @@ export function decide(
   if (state.paused) return [] // kill switch: bekukan semua keputusan baru
 
   const decisions: Decision[] = []
-  const byApr = [...candidates].sort((a, b) => b.apr20 - a.apr20)
-  const eligible = new Map(byApr.filter((r) => !passesGates(r, cfg)).map((r) => [r.poolId, r]))
-  const candidateById = new Map(byApr.map((r) => [r.poolId, r]))
+  // Ranking ENTER by DEMAND SCORE (bukan APR mentah — noise miliaran%). Kandidat lolos
+  // gate, terbaik demand-nya diprioritaskan isi slot.
+  const byDemand = [...candidates].sort((a, b) => demandScore(b) - demandScore(a))
+  const eligible = new Map(byDemand.filter((r) => !passesGates(r, cfg)).map((r) => [r.poolId, r]))
+  const candidateById = new Map(candidates.map((r) => [r.poolId, r]))
 
   // posisi yang dipegang: pertahankan kalau masih lolos gate, keluar kalau tidak
   const kept: string[] = []
@@ -123,7 +147,7 @@ export function decide(
       pair: r.pair,
       widthFactor: width,
       sizeFraction: 1 / cfg.maxPools,
-      reason: `APR ${r.apr20.toFixed(0)}% (±${((width - 1) * 100).toFixed(0)}% auto), umur ${(r.ageDays ?? 0).toFixed(1)}d, vol ${(r.volEth ?? 0).toFixed(0)} ETH/win`,
+      reason: `demand +${r.demandAccelPct.toFixed(0)}% · TVL ${r.tvlTrendPct >= 0 ? '+' : ''}${r.tvlTrendPct.toFixed(0)}% · vol ${(r.volEth ?? 0).toFixed(0)} ETH/win · APR ${r.apr20.toFixed(0)}% (±${((width - 1) * 100).toFixed(0)}%), umur ${(r.ageDays ?? 0).toFixed(1)}d`,
     })
     slots--
   }

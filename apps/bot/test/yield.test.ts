@@ -1,6 +1,27 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { autoWidthFactor, projectApr, type SnapPoint } from '../src/modules/report/yield.ts'
+import { autoWidthFactor, demandAccel, projectApr, type SnapPoint } from '../src/modules/report/yield.ts'
+
+test('demandAccel: window terbaru 2× rata2 sebelumnya → +100%', () => {
+  // rate = volEth/hours. terbaru 20/h, tiga sebelumnya 10/h → 20/10-1 = +100%.
+  const w = [
+    { volEth: 20, hours: 1 },
+    { volEth: 10, hours: 1 },
+    { volEth: 10, hours: 1 },
+    { volEth: 10, hours: 1 },
+  ]
+  assert.equal(Math.round(demandAccel(w)), 100)
+})
+
+test('demandAccel: memudar (terbaru setengah) → negatif; data tipis → 0', () => {
+  const fading = [
+    { volEth: 5, hours: 1 },
+    { volEth: 10, hours: 1 },
+    { volEth: 10, hours: 1 },
+  ]
+  assert.equal(Math.round(demandAccel(fading)), -50)
+  assert.equal(demandAccel([{ volEth: 10, hours: 1 }]), 0) // < 3 window → tak bisa dinilai
+})
 
 const Q96 = 2n ** 96n
 const Q128 = 2n ** 128n

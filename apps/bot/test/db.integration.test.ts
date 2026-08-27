@@ -75,7 +75,7 @@ test('db+yield: materializeYields mengganti isi tabel (kontrak baca backoffice)'
   const db = tmpDb()
   const mk = (poolId: string, apr20: number, volEth: number): YieldRow => ({
     pair: 'ETH/X', ageDays: 10, apr20, apr5: apr20 * 3, feePerEthDay: 0.01,
-    volEth, swapsPerH: 60, hook: '-', spanMin: 60, poolId, widthFactor: 1.2, momentumPct: 0, tvlTrendPct: 5,
+    volEth, swapsPerH: 60, hook: '-', spanMin: 60, poolId, widthFactor: 1.2, momentumPct: 0, tvlTrendPct: 5, demandAccelPct: 20,
   })
   materializeYields(db, [mk('0xa', 100, 50), mk('0xb', 200, 1)]) // 0xb gagal guard vol
   // node:sqlite mengembalikan row ber-prototype null — spread agar deepEqual apple-to-apple

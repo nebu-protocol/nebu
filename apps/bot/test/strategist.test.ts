@@ -20,6 +20,7 @@ function row(overrides: Partial<YieldRow>): YieldRow {
     widthFactor: 1.2,
     momentumPct: 0,
     tvlTrendPct: 5,
+    demandAccelPct: 20,
     ...overrides,
   }
 }
@@ -133,4 +134,25 @@ test('decide: uptrend moderat + TVL naik → lolos ENTER', () => {
     out.map((d) => [d.action, d.poolId]),
     [['ENTER', '0xgood']],
   )
+})
+
+test('decide: demand memudar (< -25%) ditolak (jadi exit-liquidity)', () => {
+  const out = decide(
+    [row({ poolId: '0xfading', apr20: 300, momentumPct: 5, demandAccelPct: -40 })],
+    cfg,
+    { paused: false, held: [] },
+  )
+  assert.equal(out.length, 0)
+})
+
+test('decide: ranking by DEMAND — accel+TVL+vol menang atas APR mentah tinggi', () => {
+  const out = decide(
+    [
+      row({ poolId: '0xhotapr', apr20: 480, demandAccelPct: 0, tvlTrendPct: 0, volEth: 10 }),
+      row({ poolId: '0xrising', apr20: 120, demandAccelPct: 200, tvlTrendPct: 50, volEth: 200 }),
+    ],
+    { ...cfg, maxPools: 1 },
+    { paused: false, held: [] },
+  )
+  assert.deepEqual(out.map((d) => d.poolId), ['0xrising'])
 })

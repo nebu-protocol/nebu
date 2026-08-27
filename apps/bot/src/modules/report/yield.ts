@@ -83,6 +83,23 @@ export type YieldRow = {
   momentumPct: number
   /** Tren likuiditas/TVL (%) first→last — prediktor dump terkuat; gate entry. */
   tvlTrendPct: number
+  /** Akselerasi permintaan (%): laju volume window terbaru vs rata2 sebelumnya. */
+  demandAccelPct: number
+}
+
+/**
+ * Akselerasi permintaan: laju volume (ETH/jam) window TERBARU vs rata-rata window
+ * sebelumnya. Naik (+) = demand nyata bertambah → continuation; turun (−) = pump habis,
+ * kita jadi EXIT-LIQUIDITY. Sinyal utama picker direksional (fee tak bisa kalahkan gas di
+ * bankroll kecil → yang penting token BERGERAK dgn demand naik). windows: terbaru-dulu.
+ */
+export function demandAccel(windows: { volEth: number; hours: number }[]): number {
+  if (windows.length < 3) return 0
+  const rate = windows.map((w) => (w.hours > 0 ? w.volEth / w.hours : 0))
+  const latest = rate[0]!
+  const prior = rate.slice(1)
+  const base = prior.reduce((a, b) => a + b, 0) / prior.length
+  return base > 0 ? (latest / base - 1) * 100 : 0
 }
 
 /**
@@ -157,6 +174,24 @@ export function computeYields(
     )
     .all() as PoolMeta[]
 
+  // Riwayat 6 window swap terakhir per pool (untuk akselerasi permintaan). ROW_NUMBER
+  // = SQLite ≥3.25 (node:sqlite modern). Sekali per siklus (report), scan wajar.
+  const windowRows = db
+    .prepare(
+      `SELECT pool_id, swap_count, volume0, window_s FROM (
+         SELECT pool_id, swap_count, volume0, (to_ts - from_ts) AS window_s,
+                ROW_NUMBER() OVER (PARTITION BY pool_id ORDER BY to_block DESC) rn
+         FROM swap_windows
+       ) WHERE rn <= 6 ORDER BY pool_id, rn`,
+    )
+    .all() as { pool_id: string; swap_count: number; volume0: string; window_s: number }[]
+  const windowsByPool = new Map<string, { volEth: number; hours: number }[]>()
+  for (const w of windowRows) {
+    const arr = windowsByPool.get(w.pool_id) ?? []
+    arr.push({ volEth: Number(BigInt(w.volume0)) / 1e18, hours: (w.window_s || 0) / 3600 })
+    windowsByPool.set(w.pool_id, arr)
+  }
+
   return metas
     .filter((m) => m.currency0 === NATIVE && m.liquidity && m.liquidity !== '0')
     .map((m): YieldRow | null => {
@@ -190,6 +225,7 @@ export function computeYields(
         widthFactor: width,
         momentumPct,
         tvlTrendPct,
+        demandAccelPct: demandAccel(windowsByPool.get(m.pool_id) ?? []),
       }
     })
     .filter((r) => r !== null)
