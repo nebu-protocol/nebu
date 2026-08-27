@@ -6,7 +6,9 @@ import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { revalidatePath } from "next/cache";
+import { createPublicClient, http, parseAbi } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { bsc } from "viem/chains";
 
 import { getBalanceEth } from "@/lib/lpdata";
 import type { RiskCustom } from "@/lib/risk";
@@ -15,6 +17,10 @@ import { getSiweAddress } from "@/server/siwe";
 
 const DB_PATH = process.env.LPBOT_DB_PATH ?? resolve(process.cwd(), "../../data/lp.db");
 const REPO = resolve(process.cwd(), "../..");
+
+const VAULT_FACTORY = (process.env.NEXT_PUBLIC_LP_VAULT_FACTORY ?? "").toLowerCase();
+const BSC_RPC = process.env.NEXT_PUBLIC_BSC_RPC_URL ?? "https://bsc-dataseed.bnbchain.org";
+const factoryAbi = parseAbi(["function vaultOf(address) view returns (address)"]);
 
 function withDb<T>(fn: (db: DatabaseSync) => T): T {
   const db = new DatabaseSync(DB_PATH);
@@ -54,6 +60,35 @@ export async function createAgentAction(): Promise<void> {
       `INSERT INTO wallets (address, name, enc_pk, owner, fund_eth, max_per_pool_eth, automation, autoswap, created_at)
        VALUES (?, ?, ?, ?, 0, 0, 0, 0, ?)`,
     ).run(agent, name, encPk, owner, Math.floor(Date.now() / 1000));
+  });
+  revalidatePath("/portfolio");
+}
+
+/**
+ * Simpan alamat LpVault owner ke wallets.vault_address — SETELAH diverifikasi on-chain
+ * bahwa factory.vaultOf(owner) == alamat itu (anti-spoof: user tak bisa set vault sembarang).
+ * Begitu diset, bot menjalankan LP lewat vault (dana di vault, agent tak bisa kuras).
+ */
+export async function setVaultAddressAction(vaultAddress: string): Promise<void> {
+  const owner = await requireSiwe();
+  if (!VAULT_FACTORY) throw new Error("Factory vault belum dikonfigurasi di server.");
+  if (!/^0x[0-9a-fA-F]{40}$/.test(vaultAddress)) throw new Error("Alamat vault tidak valid.");
+  const client = createPublicClient({ chain: bsc, transport: http(BSC_RPC) });
+  const onchain = (await client.readContract({
+    address: VAULT_FACTORY as `0x${string}`,
+    abi: factoryAbi,
+    functionName: "vaultOf",
+    args: [owner as `0x${string}`],
+  })) as string;
+  if (onchain.toLowerCase() !== vaultAddress.toLowerCase())
+    throw new Error("Vault tidak cocok dengan factory untuk owner ini.");
+  withDb((db) => {
+    const w = db.prepare("SELECT address FROM wallets WHERE lower(owner) = ?").get(owner);
+    if (!w) throw new Error("Buat agent wallet dulu.");
+    db.prepare("UPDATE wallets SET vault_address = ? WHERE lower(owner) = ?").run(
+      vaultAddress.toLowerCase(),
+      owner,
+    );
   });
   revalidatePath("/portfolio");
 }
@@ -191,6 +226,7 @@ export type OwnedWallet = {
   deposited_eth: number | null; // total ETH disetor owner (ledger on-chain)
   withdrawn_eth: number | null; // total ETH ditarik ke owner
   token_holdings_eth: number | null; // nilai ETH token ERC20 lepas (stuck/sisa mint)
+  vault_address: string | null; // LpVault owner (BSC) — kalau diset, bot LP lewat vault
 } | null;
 
 export async function getOwnedWallet(): Promise<OwnedWallet> {
@@ -201,7 +237,7 @@ export async function getOwnedWallet(): Promise<OwnedWallet> {
       .prepare(
         `SELECT address, name, fund_eth, max_per_pool_eth, automation, autoswap,
                 risk_profile, risk_stop_loss, risk_price_stop, risk_tp_arm, risk_tp_trail,
-                deposited_eth, withdrawn_eth, token_holdings_eth
+                deposited_eth, withdrawn_eth, token_holdings_eth, vault_address
          FROM wallets WHERE lower(owner) = ?`,
       )
       .get(owner) as OwnedWallet;

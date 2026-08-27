@@ -25,9 +25,20 @@ export function Providers({ children }: Readonly<{ children: React.ReactNode }>)
       settings={{
         environmentId: DYNAMIC_ENV_ID,
         walletConnectors: [EthereumWalletConnectors],
-        // Robinhood Chain (4663) — biar wallet konek ke jaringan yg benar.
+        // Jaringan yang didukung: BNB Smart Chain (56, vault + PancakeSwap Infinity) +
+        // Robinhood Chain (4663, legacy). Wallet bisa switch untuk operasi vault.
         overrides: {
           evmNetworks: [
+            {
+              blockExplorerUrls: ["https://bscscan.com"],
+              chainId: 56,
+              chainName: "BNB Smart Chain",
+              iconUrls: ["https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png"],
+              name: "BNB Smart Chain",
+              nativeCurrency: { decimals: 18, name: "BNB", symbol: "BNB" },
+              networkId: 56,
+              rpcUrls: ["https://bsc-dataseed.bnbchain.org"],
+            },
             {
               blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
               chainId: 4663,

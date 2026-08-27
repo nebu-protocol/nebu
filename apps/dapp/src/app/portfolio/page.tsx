@@ -25,6 +25,7 @@ import { ManagePanel } from "./manage-panel";
 import { MobileManage } from "./mobile-manage";
 import { PortfolioClient } from "./portfolio-client";
 import { RiskCard } from "./risk-card";
+import { VaultCard } from "./vault-card";
 import { WelcomeHeader } from "./welcome-header";
 
 export const metadata: Metadata = { title: "Portfolio" };
@@ -199,6 +200,8 @@ async function ManagedView({ address }: { address: string }) {
             tpTrail={owned?.risk_tp_trail ?? null}
           />
         )}
+
+        {agent && <VaultCard owner={address} agent={agent} vaultAddress={owned?.vault_address ?? null} />}
 
       <div>
         <h3 className="mb-1 text-sm font-medium">Your positions</h3>
