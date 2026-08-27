@@ -71,6 +71,7 @@ type Row = {
   net_pct: number | null
   peak_net_pct: number | null
   entry_ts: number
+  entry_cost_eth: number | null
   currency0: string
   currency1: string
   fee: number
@@ -94,7 +95,7 @@ export async function run() {
   const secret = process.env.LPBOT_KEY_SECRET
   const positions = db
     .prepare(
-      `SELECT p.id, p.wallet, p.pool_id, p.token_id, p.tick_lower, p.tick_upper, p.net_pct, p.peak_net_pct, p.entry_ts,
+      `SELECT p.id, p.wallet, p.pool_id, p.token_id, p.tick_lower, p.tick_upper, p.net_pct, p.peak_net_pct, p.entry_ts, p.entry_cost_eth,
               po.currency0, po.currency1, po.fee, po.tick_spacing, po.hooks, w.enc_pk,
               w.risk_profile, w.risk_stop_loss, w.risk_price_stop, w.risk_tp_arm, w.risk_tp_trail
        FROM positions p
@@ -138,6 +139,13 @@ export async function run() {
     if (account.address.toLowerCase() !== p.wallet.toLowerCase()) continue
 
     const now = Math.floor(Date.now() / 1000)
+    // Saldo SEBELUM exit → utk hitung ETH nyata yg balik (Δ saldo, sudah net gas+slippage).
+    let balBefore: bigint | null = null
+    try {
+      balBefore = await client.getBalance({ address: account.address })
+    } catch {
+      /* tak apa — fallback ke mark */
+    }
     try {
       const b = await burnLive({
         account,
@@ -158,6 +166,19 @@ export async function run() {
       if (s)
         record.run(now, p.wallet, p.pool_id, 'SWAP_OUT', Number(s.ethOut) / 1e18, s.hash,
           s.status === 'success' ? 'CONFIRMED' : 'FAILED', 'token1 -> ETH (auto-exit)')
+      // net_pct REALIZED dari ETH nyata yg balik (Δ saldo), bukan mark yg sering tak
+      // terwujud (exit token tipis = slippage). Bikin edge/win-rate jujur (cocok GMGN).
+      if (balBefore != null && p.entry_cost_eth && p.entry_cost_eth > 0) {
+        try {
+          const balAfter = await client.getBalance({ address: account.address })
+          const recovered = Number(balAfter - balBefore) / 1e18
+          const realizedNet = ((recovered - p.entry_cost_eth) / p.entry_cost_eth) * 100
+          db.prepare('UPDATE positions SET exit_value_eth = ?, net_pct = ? WHERE id = ?').run(recovered, realizedNet, p.id)
+          log(`realized ${p.pool_id.slice(0, 10)}: balik ${recovered.toFixed(6)} ETH vs entry ${p.entry_cost_eth.toFixed(6)} = ${realizedNet.toFixed(1)}%`)
+        } catch {
+          /* biarkan net_pct mark */
+        }
+      }
       log(`auto-exit ${p.pool_id.slice(0, 10)}: burn ${b.hash} swap ${s?.hash ?? 'skip'}`)
     } catch (e) {
       // NOT_MINTED (sudah tak ada) → sinkron CLOSED; error preflight lain → skip.

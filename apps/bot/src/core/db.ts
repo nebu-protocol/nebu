@@ -198,6 +198,8 @@ export function openDb(path: string = DB_PATH): DatabaseSync {
     'ALTER TABLE positions ADD COLUMN pnl_ts INTEGER',
     // puncak net_pct (high-water mark) untuk trailing take-profit
     'ALTER TABLE positions ADD COLUMN peak_net_pct REAL',
+    // ETH NYATA yg balik ke wallet saat exit (Δ saldo burn+swap) → net_pct REALIZED
+    'ALTER TABLE positions ADD COLUMN exit_value_eth REAL',
     // Ledger deposit/withdraw on-chain (dari owner) → PnL berbasis SALDO yg akurat
     'ALTER TABLE wallets ADD COLUMN deposited_eth REAL DEFAULT 0',
     'ALTER TABLE wallets ADD COLUMN withdrawn_eth REAL DEFAULT 0',
