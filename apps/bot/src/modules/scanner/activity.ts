@@ -1,7 +1,7 @@
 import { client } from '../../core/chain.ts'
 import { openDb } from '../../core/db.ts'
-import { swapEvent } from '../../contracts/abi.ts'
-import { ADDRESSES, SCAN } from '../../config/index.ts'
+import { PROFILE, SCAN } from '../../config/index.ts'
+import { getDexAdapter } from '../dex/index.ts'
 import { bmin, log, sleep } from '../../core/util.ts'
 
 const abs = (x: bigint) => (x < 0n ? -x : x)
@@ -28,11 +28,12 @@ export function aggregateSwaps(swaps: Iterable<SwapLike>, into = new Map<string,
 export async function run(args: string[]) {
   const hours = Number(args[0] ?? 1)
   const db = openDb()
+  const dex = getDexAdapter()
 
   const latestBlock = await client.getBlock()
   const latest = latestBlock.number
-  // ponytail: konversi jam->blok pakai nominal 100ms/blok; window pendek, drift kecil
-  const span = BigInt(Math.round(hours * 3600 * 10))
+  // konversi jam->blok pakai detik/blok per-chain (Robinhood ~0.1s, BSC ~3s)
+  const span = BigInt(Math.round((hours * 3600) / PROFILE.blockSeconds))
   const fromBlock = latest > span ? latest - span : 1n
   const fromTs = Number(latestBlock.timestamp) - Math.round(hours * 3600)
 
@@ -48,8 +49,8 @@ export async function run(args: string[]) {
     let logs
     try {
       logs = await client.getLogs({
-        address: ADDRESSES.poolManager,
-        event: swapEvent,
+        address: dex.poolManagerAddress,
+        event: dex.swapEvent,
         fromBlock: from,
         toBlock: to,
       })
@@ -59,7 +60,10 @@ export async function run(args: string[]) {
       continue
     }
     aggregateSwaps(
-      logs.map((l) => ({ id: l.args.id!, amount0: l.args.amount0!, amount1: l.args.amount1! })),
+      logs.map((l) => {
+        const a = (l as { args: Record<string, unknown> }).args
+        return { id: a.id as string, amount0: a.amount0 as bigint, amount1: a.amount1 as bigint }
+      }),
       perPool,
     )
     total += logs.length

@@ -146,6 +146,14 @@ export type ChainProfile = {
   addresses: Addresses
   /** wrapped-native address (WBNB/WETH) — Infinity pakai native langsung juga */
   weth?: `0x${string}`
+  /**
+   * Backfill discovery: kalau diset, scan HANYA `head - scanWindowBlocks` → head
+   * (RPC publik BSC di-prune → tak bisa scan genesis/log lama). Undefined = scan dari
+   * genesis (Robinhood, RPC arsip). Override eksplisit via env SCAN_START_BLOCK.
+   */
+  scanWindowBlocks?: number
+  /** Perkiraan detik/blok (untuk konversi window jam→blok di activity). */
+  blockSeconds: number
 }
 
 const PROFILES: Record<string, ChainProfile> = {
@@ -155,6 +163,7 @@ const PROFILES: Record<string, ChainProfile> = {
     rpcUrls: ROBINHOOD_RPC_URLS,
     dex: 'uniswap-v4',
     addresses: ROBINHOOD_ADDRESSES,
+    blockSeconds: 0.1, // ~100ms/blok (L2 Orbit)
   },
   bsc: {
     name: 'bsc',
@@ -163,6 +172,8 @@ const PROFILES: Record<string, ChainProfile> = {
     dex: 'pancake-infinity',
     addresses: INFINITY_BSC_ADDRESSES,
     weth: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', // WBNB
+    scanWindowBlocks: Number(process.env.SCAN_WINDOW_BLOCKS ?? 100_000), // ~3.5 hari @3s
+    blockSeconds: 3, // ~3s/blok (BSC)
   },
   'bsc-testnet': {
     name: 'bsc-testnet',
@@ -171,6 +182,8 @@ const PROFILES: Record<string, ChainProfile> = {
     dex: 'pancake-infinity',
     addresses: INFINITY_TESTNET_ADDRESSES,
     weth: '0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd', // tWBNB
+    scanWindowBlocks: Number(process.env.SCAN_WINDOW_BLOCKS ?? 100_000),
+    blockSeconds: 3,
   },
 }
 

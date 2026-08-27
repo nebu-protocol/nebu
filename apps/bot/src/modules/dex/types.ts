@@ -58,3 +58,23 @@ export type PositionValueParams = {
   tickUpper: number
   tokenId: bigint
 }
+
+/** Pool baru dari event Initialize (dinormalisasi lintas-DEX). */
+export type PoolInit = {
+  poolId: string
+  currency0: string
+  currency1: string
+  fee: number
+  tickSpacing: number
+  hooks: string
+}
+
+/** State pool untuk snapshot (harga, likuiditas, feeGrowth global). */
+export type PoolState = {
+  sqrtPriceX96: bigint
+  tick: number
+  lpFee: number
+  liquidity: bigint
+  feeGrowthGlobal0: bigint
+  feeGrowthGlobal1: bigint
+}

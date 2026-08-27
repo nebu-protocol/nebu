@@ -1,8 +1,9 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { client } from '../../core/chain.ts'
 import { openDb } from '../../core/db.ts'
-import { stateViewAbi, erc20Abi } from '../../contracts/abi.ts'
-import { ADDRESSES, NATIVE, SCAN } from '../../config/index.ts'
+import { erc20Abi } from '../../contracts/abi.ts'
+import { NATIVE, SCAN } from '../../config/index.ts'
+import { getDexAdapter } from '../dex/index.ts'
 import { log, mapLimit } from '../../core/util.ts'
 
 /**
@@ -66,28 +67,21 @@ export async function run(args: string[] = []) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   )
 
+  const dex = getDexAdapter()
   let done = 0
   await mapLimit(pools, SCAN.concurrency, async (p) => {
-    try {
-      const sv = { address: ADDRESSES.stateView, abi: stateViewAbi } as const
-      const poolId = p.pool_id as `0x${string}`
-      const [slot0, liquidity, feeGrowth] = await Promise.all([
-        client.readContract({ ...sv, functionName: 'getSlot0', args: [poolId] }),
-        client.readContract({ ...sv, functionName: 'getLiquidity', args: [poolId] }),
-        client.readContract({ ...sv, functionName: 'getFeeGrowthGlobals', args: [poolId] }),
-      ])
+    const st = await dex.poolState(p.pool_id) // null kalau gagal baca — skip
+    if (st) {
       insertSnap.run(
         p.pool_id,
         ts,
-        slot0[0].toString(),
-        slot0[1],
-        slot0[3],
-        liquidity.toString(),
-        feeGrowth[0].toString(),
-        feeGrowth[1].toString(),
+        st.sqrtPriceX96.toString(),
+        st.tick,
+        st.lpFee,
+        st.liquidity.toString(),
+        st.feeGrowthGlobal0.toString(),
+        st.feeGrowthGlobal1.toString(),
       )
-    } catch {
-      // pool bisa gagal dibaca (state aneh) — skip, jangan gagalkan seluruh snapshot
     }
     if (++done % 500 === 0) log(`snapshot ${done}/${pools.length}`)
   })

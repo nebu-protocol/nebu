@@ -1,7 +1,7 @@
 import { client } from '../../core/chain.ts'
 import { openDb, getMeta, setMeta } from '../../core/db.ts'
-import { initializeEvent } from '../../contracts/abi.ts'
-import { ADDRESSES, SCAN } from '../../config/index.ts'
+import { PROFILE, SCAN } from '../../config/index.ts'
+import { getDexAdapter } from '../dex/index.ts'
 import { bmin, log, sleep } from '../../core/util.ts'
 
 const CURSOR_KEY = 'backfill_cursor'
@@ -18,8 +18,17 @@ export function makeTsEstimator(t0: number, tHead: number, latestBlock: bigint) 
  */
 export async function run() {
   const db = openDb()
+  const dex = getDexAdapter()
   const latest = await client.getBlockNumber()
-  let from = BigInt(getMeta(db, CURSOR_KEY) ?? 1)
+  // Start discovery: cursor (resume) → env SCAN_START_BLOCK → window (head - N, utk RPC
+  // publik BSC yg tak melayani log genesis) → genesis (Robinhood, RPC arsip).
+  const envStart = process.env.SCAN_START_BLOCK ? BigInt(process.env.SCAN_START_BLOCK) : null
+  const windowStart =
+    PROFILE.scanWindowBlocks != null && latest > BigInt(PROFILE.scanWindowBlocks)
+      ? latest - BigInt(PROFILE.scanWindowBlocks)
+      : 1n
+  const defaultStart = envStart ?? windowStart
+  let from = BigInt(getMeta(db, CURSOR_KEY) ?? defaultStart.toString())
   let chunk: bigint = SCAN.initialChunk
   let totalFound = 0
 
@@ -28,23 +37,25 @@ export async function run() {
      (pool_id, currency0, currency1, fee, tick_spacing, hooks, block_number, created_at, tx_hash)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
-  // ponytail: timestamp diestimasi via interpolasi linear blok-1..head (2 request,
-  // bukan 1 getBlock per pool — public RPC 429). Galat ~menit; upgrade: RPC berbayar.
-  const [genesisBlock, headBlock] = await Promise.all([
-    client.getBlock({ blockNumber: 1n }),
+  // ponytail: timestamp diestimasi via interpolasi linear [from..head] (2 request, bukan 1
+  // getBlock per pool — RPC publik 429). Galat ~menit. Anchor di `from` (bukan blok 1) biar
+  // aman di node ter-prune (BSC publik tak punya state blok lama).
+  const [startBlock, headBlock] = await Promise.all([
+    client.getBlock({ blockNumber: from }),
     client.getBlock({ blockNumber: latest }),
   ])
-  const estTs = makeTsEstimator(Number(genesisBlock.timestamp), Number(headBlock.timestamp), latest)
+  const rate = (Number(headBlock.timestamp) - Number(startBlock.timestamp)) / Number(latest - from || 1n)
+  const estTs = (b: bigint) => Math.round(Number(startBlock.timestamp) + (Number(b) - Number(from)) * rate)
 
-  log(`backfill: block ${from} -> ${latest} (${latest - from + 1n} blocks)`)
+  log(`backfill (${dex.kind}): block ${from} -> ${latest} (${latest - from + 1n} blocks)`)
 
   while (from <= latest) {
     const to = bmin(from + chunk - 1n, latest)
     let logs
     try {
       logs = await client.getLogs({
-        address: ADDRESSES.poolManager,
-        event: initializeEvent,
+        address: dex.poolManagerAddress,
+        event: dex.initializeEvent,
         fromBlock: from,
         toBlock: to,
       })
@@ -55,14 +66,15 @@ export async function run() {
     }
 
     for (const l of logs) {
-      const a = l.args
+      const p = dex.decodeInitialize((l as { args: Record<string, unknown> }).args)
+      if (!p) continue
       insert.run(
-        a.id!,
-        a.currency0!.toLowerCase(),
-        a.currency1!.toLowerCase(),
-        a.fee!,
-        a.tickSpacing!,
-        a.hooks!.toLowerCase(),
+        p.poolId,
+        p.currency0,
+        p.currency1,
+        p.fee,
+        p.tickSpacing,
+        p.hooks,
         Number(l.blockNumber),
         estTs(l.blockNumber),
         l.transactionHash,

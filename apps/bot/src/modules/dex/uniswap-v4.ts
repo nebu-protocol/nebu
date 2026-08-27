@@ -1,5 +1,5 @@
-import { parseAbi } from 'viem'
 import { ADDRESSES } from '../../config/index.ts'
+import { initializeEvent, stateViewAbi, swapEvent } from '../../contracts/abi.ts'
 import { client } from '../../core/chain.ts'
 import { burnLive, mintLive, positionValueLive, swapToEthLive } from '../executor/live.ts'
 import type { DexAdapter } from './adapter.ts'
@@ -7,12 +7,8 @@ import type { DexAdapter } from './adapter.ts'
 /**
  * Adapter Uniswap v4 (Robinhood Chain, fallback). Membungkus jalur `live.ts` yang
  * sudah terbukti on-chain (mint/burn/swap round-trip) — TIDAK ditulis ulang; cukup
- * dipetakan ke antarmuka DexAdapter. Baca slot0 langsung via StateView.
+ * dipetakan ke antarmuka DexAdapter. Baca state via StateView.
  */
-const stateViewAbi = parseAbi([
-  'function getSlot0(bytes32 poolId) view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee)',
-])
-
 export const uniswapV4Adapter: DexAdapter = {
   kind: 'uniswap-v4',
 
@@ -34,4 +30,47 @@ export const uniswapV4Adapter: DexAdapter = {
   mint: (p) => mintLive(p),
   burn: (p) => burnLive(p),
   swapToNative: (p) => swapToEthLive(p),
+
+  // --- scanner ---
+  poolManagerAddress: ADDRESSES.poolManager,
+  initializeEvent,
+  swapEvent,
+
+  decodeInitialize(a) {
+    if (!a.id || !a.currency0 || !a.currency1) return null
+    return {
+      poolId: a.id as string,
+      currency0: (a.currency0 as string).toLowerCase(),
+      currency1: (a.currency1 as string).toLowerCase(),
+      fee: Number(a.fee),
+      tickSpacing: Number(a.tickSpacing),
+      hooks: (a.hooks as string).toLowerCase(),
+    }
+  },
+
+  async poolState(poolId) {
+    try {
+      const sv = { address: ADDRESSES.stateView, abi: stateViewAbi } as const
+      const id = poolId as `0x${string}`
+      const [slot0, liquidity, feeGrowth] = await Promise.all([
+        client.readContract({ ...sv, functionName: 'getSlot0', args: [id] }) as Promise<
+          readonly [bigint, number, number, number]
+        >,
+        client.readContract({ ...sv, functionName: 'getLiquidity', args: [id] }) as Promise<bigint>,
+        client.readContract({ ...sv, functionName: 'getFeeGrowthGlobals', args: [id] }) as Promise<
+          readonly [bigint, bigint]
+        >,
+      ])
+      return {
+        sqrtPriceX96: slot0[0],
+        tick: slot0[1],
+        lpFee: slot0[3],
+        liquidity,
+        feeGrowthGlobal0: feeGrowth[0],
+        feeGrowthGlobal1: feeGrowth[1],
+      }
+    } catch {
+      return null
+    }
+  },
 }

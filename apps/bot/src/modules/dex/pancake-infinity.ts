@@ -1,4 +1,4 @@
-import { encodeAbiParameters, keccak256, parseAbi } from 'viem'
+import { encodeAbiParameters, keccak256, parseAbi, parseAbiItem } from 'viem'
 import { ADDRESSES, NATIVE } from '../../config/index.ts'
 import { client } from '../../core/chain.ts'
 import {
@@ -33,9 +33,24 @@ const SLIPPAGE_BPS = BigInt(process.env.INFI_SLIPPAGE_BPS ?? 500) // 5% — meme
 
 const clPoolManagerAbi = parseAbi([
   'function getSlot0(bytes32 id) view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee)',
+  'function getLiquidity(bytes32 id) view returns (uint128 liquidity)',
+  'function getFeeGrowthGlobals(bytes32 id) view returns (uint256 feeGrowthGlobal0, uint256 feeGrowthGlobal1)',
   'function getPosition(bytes32 id, address owner, int24 tickLower, int24 tickUpper, bytes32 salt) view returns (uint128 liquidity, uint256 feeGrowthInside0LastX128, uint256 feeGrowthInside1LastX128)',
 ])
 const erc20Abi = parseAbi(['function balanceOf(address) view returns (uint256)'])
+
+// Event Infinity CLPoolManager (beda dari v4: hooks+fee+parameters, +protocolFee di Swap).
+const initializeEvent = parseAbiItem(
+  'event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, address hooks, uint24 fee, bytes32 parameters, uint160 sqrtPriceX96, int24 tick)',
+)
+const swapEvent = parseAbiItem(
+  'event Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee, uint16 protocolFee)',
+)
+
+/** tickSpacing dari bytes32 parameters (bit [16,40), 24-bit). Pool no-hook. */
+function tickSpacingFromParameters(parameters: string): number {
+  return Number((BigInt(parameters) >> 16n) & 0xffffffn)
+}
 
 /**
  * poolId Infinity = keccak256 dari 6 field PoolKey (0xc0 byte) urut:
@@ -240,5 +255,53 @@ export const pancakeInfinityAdapter: DexAdapter = {
     const hash = await wc.sendTransaction({ to: tx.to, data: tx.data, value: 0n })
     const receipt = await client.waitForTransactionReceipt({ hash })
     return { hash, status: receipt.status, ethOut: grossOut, amountIn }
+  },
+
+  // --- scanner ---
+  poolManagerAddress: ADDRESSES.clPoolManager,
+  initializeEvent,
+  swapEvent,
+
+  decodeInitialize(a) {
+    if (!a.id || !a.currency0 || !a.currency1) return null
+    return {
+      poolId: a.id as string,
+      currency0: (a.currency0 as string).toLowerCase(),
+      currency1: (a.currency1 as string).toLowerCase(),
+      fee: Number(a.fee),
+      tickSpacing: tickSpacingFromParameters(a.parameters as string),
+      hooks: (a.hooks as string).toLowerCase(),
+    }
+  },
+
+  async poolState(poolId) {
+    try {
+      const id = poolId as `0x${string}`
+      const [slot0, liquidity, feeGrowth] = await Promise.all([
+        rawSlot0(poolId),
+        client.readContract({
+          address: ADDRESSES.clPoolManager,
+          abi: clPoolManagerAbi,
+          functionName: 'getLiquidity',
+          args: [id],
+        }) as Promise<bigint>,
+        client.readContract({
+          address: ADDRESSES.clPoolManager,
+          abi: clPoolManagerAbi,
+          functionName: 'getFeeGrowthGlobals',
+          args: [id],
+        }) as Promise<readonly [bigint, bigint]>,
+      ])
+      return {
+        sqrtPriceX96: slot0[0],
+        tick: slot0[1],
+        lpFee: slot0[3],
+        liquidity,
+        feeGrowthGlobal0: feeGrowth[0],
+        feeGrowthGlobal1: feeGrowth[1],
+      }
+    } catch {
+      return null
+    }
   },
 }

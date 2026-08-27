@@ -1,8 +1,11 @@
+import type { AbiEvent } from 'viem'
 import type { DexKind } from '../../config/index.ts'
 import type {
   BurnParams,
   MintParams,
   MintResult,
+  PoolInit,
+  PoolState,
   PositionValue,
   PositionValueParams,
   Slot0,
@@ -37,4 +40,16 @@ export interface DexAdapter {
   burn(p: BurnParams): Promise<TxResult>
   /** Swap seluruh saldo token1 agent balik ke native; null kalau tak ada token1. */
   swapToNative(p: SwapParams): Promise<SwapResult | null>
+
+  // --- scanner (discovery + state) ---
+  /** Kontrak sumber event pool (PoolManager v4 / CLPoolManager Infinity). */
+  readonly poolManagerAddress: `0x${string}`
+  /** Event Initialize (pembuatan pool) untuk filter getLogs. */
+  readonly initializeEvent: AbiEvent
+  /** Event Swap (aktivitas) untuk filter getLogs. */
+  readonly swapEvent: AbiEvent
+  /** Normalisasi args log Initialize → PoolInit; null kalau bukan pool valid. */
+  decodeInitialize(args: Record<string, unknown>): PoolInit | null
+  /** State pool untuk snapshot (harga, likuiditas, feeGrowth); null kalau gagal. */
+  poolState(poolId: string): Promise<PoolState | null>
 }
