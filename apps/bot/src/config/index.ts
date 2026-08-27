@@ -1,15 +1,53 @@
-import { defineChain } from 'viem'
+import { type Chain, defineChain } from 'viem'
 
+// ============================================================================
+// MULTI-CHAIN / MULTI-DEX PROFILES
+// Bot awalnya Uniswap v4 di Robinhood Chain. Pivot hackathon BNB: PancakeSwap
+// Infinity (arsitektur kembar v4) di BSC sebagai PRIMARY & DEFAULT, Uniswap v4
+// (Robinhood) sebagai FALLBACK. Chain aktif dipilih env CHAIN (default 'bsc').
+// PENTING: deployment Robinhood yg live HARUS set CHAIN=robinhood di .env biar
+// tak ke-switch. Adapter DEX (executor) bercabang di DEX_KIND.
+// ============================================================================
+
+export type DexKind = 'uniswap-v4' | 'pancake-infinity'
+
+/**
+ * Semua alamat kontrak DEX. Kunci non-opsional (hindari `| undefined` dari
+ * noUncheckedIndexedAccess). Kunci yg tak dipakai satu DEX diisi ZERO — kode DEX
+ * lain tak menyentuhnya (dispatch di DEX_KIND / adapter).
+ */
+export type Addresses = {
+  // Uniswap v4
+  poolManager: `0x${string}`
+  stateView: `0x${string}`
+  positionManager: `0x${string}`
+  quoter: `0x${string}`
+  // PancakeSwap Infinity
+  vault: `0x${string}`
+  clPoolManager: `0x${string}`
+  binPoolManager: `0x${string}`
+  clPositionManager: `0x${string}`
+  clQuoter: `0x${string}`
+  // shared
+  universalRouter: `0x${string}`
+  permit2: `0x${string}`
+}
+
+/** Permit2 kanonik (sama di semua chain EVM). */
+const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as const
+const ZERO = '0x0000000000000000000000000000000000000000' as const
+
+// --- Robinhood Chain (Uniswap v4) — profil default, TIDAK diubah ---
 export const RPC_URL =
   process.env.ROBINHOOD_RPC_URL ?? 'https://rpc.mainnet.chain.robinhood.com'
 
 /**
- * Urutan fallback. Diverifikasi 2026-08-25:
+ * Urutan fallback RPC Robinhood. Diverifikasi 2026-08-25:
  * - RPC resmi: semua method (getLogs satu-satunya di sini)
  * - PublicNode: eth_call/getBlock OK; SEMUA eth_getLogs ditolak (dianggap archive)
  * - dRPC gratis: tanpa eth_call & eth_getLogs — tidak dipakai
  */
-export const RPC_URLS = [
+const ROBINHOOD_RPC_URLS = [
   ...(process.env.ROBINHOOD_RPC_URL ? [process.env.ROBINHOOD_RPC_URL] : []),
   'https://rpc.mainnet.chain.robinhood.com',
   'https://robinhood-rpc.publicnode.com',
@@ -26,14 +64,125 @@ export const robinhoodChain = defineChain({
 })
 
 /** Uniswap v4 on Robinhood Chain — verified on-chain (eth_getCode) 2026-08-25. */
-export const ADDRESSES = {
+const ROBINHOOD_ADDRESSES: Addresses = {
   poolManager: '0x8366a39cc670b4001a1121b8f6a443a643e40951',
   stateView: '0xf3334192d15450cdd385c8b70e03f9a6bd9e673b',
   positionManager: '0x58daec3116aae6d93017baaea7749052e8a04fa7',
   universalRouter: '0x8876789976decbfcbbbe364623c63652db8c0904',
   quoter: '0x8dc178efb8111bb0973dd9d722ebeff267c98f94',
-  permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
-} as const
+  permit2: PERMIT2,
+  // Infinity-only (tak dipakai di v4)
+  vault: ZERO,
+  clPoolManager: ZERO,
+  binPoolManager: ZERO,
+  clPositionManager: ZERO,
+  clQuoter: ZERO,
+}
+
+// --- BNB Smart Chain (PancakeSwap Infinity CLAMM) — primary hackathon target ---
+const BSC_RPC_URLS = [
+  ...(process.env.BSC_RPC_URL ? [process.env.BSC_RPC_URL] : []),
+  'https://bsc-dataseed.bnbchain.org',
+  'https://bsc-rpc.publicnode.com',
+  'https://bsc-dataseed1.defibit.io',
+]
+
+export const bscChain = defineChain({
+  id: 56,
+  name: 'BNB Smart Chain',
+  nativeCurrency: { name: 'BNB', symbol: 'BNB', decimals: 18 },
+  rpcUrls: { default: { http: BSC_RPC_URLS } },
+  blockExplorers: { default: { name: 'BscScan', url: 'https://bscscan.com' } },
+})
+
+const BSC_TESTNET_RPC_URLS = [
+  ...(process.env.BSC_RPC_URL ? [process.env.BSC_RPC_URL] : []),
+  'https://data-seed-prebsc-1-s1.bnbchain.org:8545',
+  'https://bsc-testnet-rpc.publicnode.com',
+]
+
+export const bscTestnetChain = defineChain({
+  id: 97,
+  name: 'BNB Smart Chain Testnet',
+  nativeCurrency: { name: 'tBNB', symbol: 'tBNB', decimals: 18 },
+  rpcUrls: { default: { http: BSC_TESTNET_RPC_URLS } },
+  blockExplorers: { default: { name: 'BscScan', url: 'https://testnet.bscscan.com' } },
+})
+
+/**
+ * PancakeSwap Infinity — verified from official dev docs (addresses.mdx, kolom
+ * "BNB & Base" = mainnet). Vault = target settle/take (bukan PoolManager, beda dgn
+ * Uniswap v4). CLQuoter untuk quote, CLPoolManager untuk baca slot0/posisi.
+ */
+const INFINITY_V4_ZEROS = { poolManager: ZERO, stateView: ZERO, positionManager: ZERO, quoter: ZERO }
+
+const INFINITY_BSC_ADDRESSES: Addresses = {
+  vault: '0x238a358808379702088667322f80aC48bAd5e6c4',
+  clPoolManager: '0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b',
+  binPoolManager: '0xC697d2898e0D09264376196696c51D7aBbbAA4a9',
+  clPositionManager: '0x55f4c8abA71A1e923edC303eb4fEfF14608cC226',
+  clQuoter: '0xd0737C9762912dD34c3271197E362Aa736Df0926',
+  universalRouter: '0xd9C500DfF816a1Da21A48A732d3498Bf09dc9AEB',
+  permit2: PERMIT2,
+  ...INFINITY_V4_ZEROS,
+}
+
+const INFINITY_TESTNET_ADDRESSES: Addresses = {
+  vault: '0x2CdB3EC82EE13d341Dc6E73637BE0Eab79cb79dD',
+  clPoolManager: '0x36A12c70c9Cf64f24E89ee132BF93Df2DCD199d4',
+  binPoolManager: '0xe71d2e0230cE0765be53A8A1ee05bdACF30F296B',
+  clPositionManager: '0x77DedB52EC6260daC4011313DBEE09616d30d122',
+  clQuoter: '0x5d544D0ad627a72d7Fb53c22D8888663FC5d5B0d',
+  universalRouter: '0x87FD5305E6a40F378da124864B2D479c2028BD86',
+  permit2: PERMIT2,
+  ...INFINITY_V4_ZEROS,
+}
+
+export type ChainProfile = {
+  name: string
+  chain: Chain
+  rpcUrls: string[]
+  dex: DexKind
+  addresses: Addresses
+  /** wrapped-native address (WBNB/WETH) — Infinity pakai native langsung juga */
+  weth?: `0x${string}`
+}
+
+const PROFILES: Record<string, ChainProfile> = {
+  robinhood: {
+    name: 'robinhood',
+    chain: robinhoodChain,
+    rpcUrls: ROBINHOOD_RPC_URLS,
+    dex: 'uniswap-v4',
+    addresses: ROBINHOOD_ADDRESSES,
+  },
+  bsc: {
+    name: 'bsc',
+    chain: bscChain,
+    rpcUrls: BSC_RPC_URLS,
+    dex: 'pancake-infinity',
+    addresses: INFINITY_BSC_ADDRESSES,
+    weth: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', // WBNB
+  },
+  'bsc-testnet': {
+    name: 'bsc-testnet',
+    chain: bscTestnetChain,
+    rpcUrls: BSC_TESTNET_RPC_URLS,
+    dex: 'pancake-infinity',
+    addresses: INFINITY_TESTNET_ADDRESSES,
+    weth: '0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd', // tWBNB
+  },
+}
+
+/** Chain aktif via env CHAIN (default 'bsc' = target hackathon; Robinhood live pin CHAIN=robinhood). */
+export const CHAIN = process.env.CHAIN ?? 'bsc'
+export const PROFILE: ChainProfile = PROFILES[CHAIN] ?? PROFILES.bsc!
+export const DEX_KIND = PROFILE.dex
+export const ACTIVE_CHAIN = PROFILE.chain
+/** Alamat kontrak DEX untuk chain aktif (shape tergantung DEX_KIND). */
+export const ADDRESSES: Addresses = PROFILE.addresses
+/** Urutan fallback RPC untuk chain aktif. */
+export const RPC_URLS = PROFILE.rpcUrls
 
 export const NATIVE = '0x0000000000000000000000000000000000000000'
 
