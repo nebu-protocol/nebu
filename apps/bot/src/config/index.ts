@@ -80,12 +80,11 @@ const ROBINHOOD_ADDRESSES: Addresses = {
 }
 
 // --- BNB Smart Chain (PancakeSwap Infinity CLAMM) — primary hackathon target ---
-const BSC_RPC_URLS = [
-  ...(process.env.BSC_RPC_URL ? [process.env.BSC_RPC_URL] : []),
-  'https://bsc-dataseed.bnbchain.org',
-  'https://bsc-rpc.publicnode.com',
-  'https://bsc-dataseed1.defibit.io',
-]
+// Custom BSC_RPC_URL = EKSKLUSIF (private/archive/anvil node dipilih sengaja → jangan diam2
+// fallback ke publik yg rate-limited / beda state). Kosong = daftar publik default.
+const BSC_RPC_URLS = process.env.BSC_RPC_URL
+  ? [process.env.BSC_RPC_URL]
+  : ['https://bsc-dataseed.bnbchain.org', 'https://bsc-rpc.publicnode.com', 'https://bsc-dataseed1.defibit.io']
 
 export const bscChain = defineChain({
   id: 56,
