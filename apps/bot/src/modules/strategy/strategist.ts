@@ -19,7 +19,9 @@ export type StrategyConfig = {
 export const DEFAULT_STRATEGY: StrategyConfig = {
   minAgeDays: 3,
   minAprPct: 50,
-  maxPools: 8, // diversifikasi lebih; saldo idle bisa masuk ke lebih banyak pool
+  // 3 (turun dari 8): riset + data aktivitas — 23 round-trip/hari di fund $6 = fee ~13%.
+  // Sedikit posisi berkonviksi > banyak churn. Bankroll-sizing tetap batasi ukuran.
+  maxPools: 3,
   widthFactor: 1.2,
   requireNoHook: true,
   // Riset (Amberdata/DeFi-Scientist): LP = short-vol; cuma menang saat token TRENDING
@@ -29,8 +31,10 @@ export const DEFAULT_STRATEGY: StrategyConfig = {
   // Riset entry (arXiv/sciencedirect): token ILIKUID MEAN-REVERT jangka pendek — beli
   // candle vertikal = beli puncak → dump. Tolak pump ekstrem; masuk uptrend moderat saja.
   momentumMaxPct: Number(process.env.MOMENTUM_MAX_PCT ?? 40),
-  // Tren TVL prediktor dump TERKUAT (AUC ~0.89): tolak pool yg likuiditasnya ambruk.
-  tvlTrendMinPct: Number(process.env.TVL_TREND_MIN_PCT ?? -20),
+  // TVL prediktor dump TERKUAT (AUC ~0.89). NAIK dari -20 (cuma tolak ambruk) ke 0
+  // (WAJIB likuiditas naik = demand nyata). Data: 9:2 stop-loss:take-profit → entry
+  // masih banyak reversal; TVL-rising saring lebih tajam = entry lebih sedikit tapi bagus.
+  tvlTrendMinPct: Number(process.env.TVL_TREND_MIN_PCT ?? 0),
 }
 
 export type PortfolioState = {

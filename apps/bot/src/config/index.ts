@@ -68,10 +68,10 @@ export const EXIT = {
 // Cooldown re-entry: setelah posisi di pool ditutup, tunggu segini sebelum boleh masuk
 // lagi (hindari whipsaw balik ke pool yg baru di-stop-loss). BUKAN blok permanen —
 // dulu pool yg pernah disentuh diblok selamanya → bot kehabisan pool → berhenti entry.
-// 3j (turun dari 6j): 6j MEMBLOKIR semua entry — universe pool lolos-gate kecil (~4),
-// semua di-cooldown → 0 entry 2 siklus → tak ada data POST-GATE utk belajar. 3j buka
-// lagi entry (whipsaw ditahan stop -20% + gate TVL/anti-extension). Testing: iterasi cepat.
-export const REENTRY_COOLDOWN_S = Number(process.env.REENTRY_COOLDOWN_H ?? 3) * 3600
+// 8j (naik dari 3j): universe pool sekarang besar (23 kandidat) jadi 8j tak menstarve,
+// dan mengurangi churn (re-trade pool yg sama) → potong fee drag (~13% fund). Gate
+// TVL-rising memastikan tetap ada entry berkualitas walau cooldown panjang.
+export const REENTRY_COOLDOWN_S = Number(process.env.REENTRY_COOLDOWN_H ?? 8) * 3600
 
 // Time-stop: tutup posisi yg > ini jam TAPI tak pernah "arm" take-profit (momentum tak
 // muncul). Riset: momentum crypto decay cepat + LP diam = bleed LVR (negative carry).
