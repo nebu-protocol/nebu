@@ -1,16 +1,11 @@
-import { parseAbi } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { client } from '../../core/chain.ts'
 import { decryptSecret } from '../../core/crypto.ts'
 import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
-import { ADDRESSES, EXIT, MAX_HOLD_HOURS } from '../../config/index.ts'
-import { burnLive, swapToEthLive } from '../executor/live.ts'
+import { EXIT, MAX_HOLD_HOURS } from '../../config/index.ts'
+import { getDexAdapter } from '../dex/index.ts'
 import { resolveExitCfg } from './risk.ts'
-
-const stateViewAbi = parseAbi([
-  'function getSlot0(bytes32 poolId) view returns (uint160 sqrtPriceX96, int24 tick, uint24 protocolFee, uint24 lpFee)',
-])
 
 export type ExitCfg = {
   stopLossPct: number
@@ -105,6 +100,7 @@ export async function run() {
     )
     .all() as Row[]
   if (!positions.length) return
+  const dex = getDexAdapter()
 
   const record = db.prepare(
     `INSERT INTO executions (ts, wallet, pool_id, kind, amount_eth, tx_hash, status, detail)
@@ -112,18 +108,9 @@ export async function run() {
   )
 
   for (const p of positions) {
-    let tick: number
-    try {
-      const slot0 = (await client.readContract({
-        address: ADDRESSES.stateView as `0x${string}`,
-        abi: stateViewAbi,
-        functionName: 'getSlot0',
-        args: [p.pool_id as `0x${string}`],
-      })) as readonly [bigint, number, number, number]
-      tick = slot0[1]
-    } catch {
-      continue // gagal baca harga — jangan ambil keputusan
-    }
+    const slot0 = await dex.getSlot0(p.pool_id)
+    if (!slot0) continue // gagal baca harga — jangan ambil keputusan
+    const tick = slot0.tick
     const cfg = resolveExitCfg(p)
     let reason = exitReason(p.net_pct, p.peak_net_pct, tick, p.tick_lower, p.tick_upper, cfg)
     // Time-stop: posisi tua yg tak pernah arm take-profit → momentum tak muncul, cuma
@@ -147,7 +134,7 @@ export async function run() {
       /* tak apa — fallback ke mark */
     }
     try {
-      const b = await burnLive({
+      const b = await dex.burn({
         account,
         tokenId: BigInt(p.token_id),
         currency0: p.currency0 as `0x${string}`,
@@ -158,7 +145,7 @@ export async function run() {
         b.status === 'success' ? 'CONFIRMED' : 'FAILED', `auto-exit: ${reason}`)
       if (b.status !== 'success') continue
       db.prepare(`UPDATE positions SET status = 'CLOSED', exit_ts = ? WHERE id = ?`).run(now, p.id)
-      const s = await swapToEthLive({
+      const s = await dex.swapToNative({
         account,
         pool: p, // punya currency0/1/fee/tick_spacing/hooks
         deadline: BigInt(now + 600),

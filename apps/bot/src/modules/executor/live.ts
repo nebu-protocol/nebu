@@ -2,12 +2,13 @@ import {
   createWalletClient,
   encodeAbiParameters,
   encodeFunctionData,
+  fallback,
   http,
   parseAbi,
   type Account,
 } from 'viem'
 import { client } from '../../core/chain.ts'
-import { ADDRESSES, NATIVE, robinhoodChain, RPC_URL } from '../../config/index.ts'
+import { ACTIVE_CHAIN, ADDRESSES, NATIVE, RPC_URLS } from '../../config/index.ts'
 import { encodeMintPosition, type PoolKeyLike } from './mint.ts'
 import { encodeBurnPosition } from './burn.ts'
 import { amountsForLiquidity, liquidityForAmounts, rangeFromWidth, sqrtRatioX96AtTick } from './liquidity-math.ts'
@@ -184,12 +185,16 @@ export function tokenIdFromLogs(
   return null
 }
 
-// RPC resmi kadang 429 pada burst — retry backoff supaya broadcast tembus.
+// RPC kadang 429 pada burst — fallback berurutan + retry backoff supaya broadcast tembus.
+// Chain aktif dari profil (config CHAIN) — bukan hardcode Robinhood, biar jalan di BSC juga.
 const wcFor = (account: Account) =>
   createWalletClient({
     account,
-    chain: robinhoodChain,
-    transport: http(RPC_URL, { retryCount: 8, retryDelay: 1000 }),
+    chain: ACTIVE_CHAIN,
+    transport: fallback(
+      RPC_URLS.map((url) => http(url, { retryCount: 8, retryDelay: 1000 })),
+      { rank: false },
+    ),
   })
 
 /** Pastikan `spender` bisa menarik token via Permit2 (idempotent). Default PositionManager. */

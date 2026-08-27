@@ -1,6 +1,6 @@
 import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
-import { positionValueLive } from '../executor/live.ts'
+import { getDexAdapter } from '../dex/index.ts'
 
 /**
  * PnL NYATA per posisi OPEN dari state on-chain (principal + fee terakumulasi vs
@@ -28,6 +28,7 @@ export async function run() {
     log('positions-live: tak ada posisi OPEN')
     return
   }
+  const dex = getDexAdapter()
 
   const now = Math.floor(Date.now() / 1000)
   // Fallback entry (posisi lama tanpa entry_cost tersimpan): HANYA CONFIRMED — swap
@@ -47,7 +48,7 @@ export async function run() {
 
   for (const p of positions) {
     try {
-      const v = await positionValueLive({
+      const v = await dex.positionValue({
         poolId: p.pool_id,
         tickLower: p.tick_lower,
         tickUpper: p.tick_upper,
