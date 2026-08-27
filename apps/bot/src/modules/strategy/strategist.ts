@@ -80,17 +80,21 @@ function passesGates(r: YieldRow, cfg: StrategyConfig): string | null {
 }
 
 /**
- * Skor "demand" untuk RANKING entry (bukan gate). APR mentah tak dipakai ranking — di pool
- * meme ilikuid fee-growth artefak bikin APR miliaran% (noise). Yang nyata = akselerasi
- * volume + TVL naik + volume absolut + APR DI-CAP. Pilih yg demand-nya paling nyata naik.
+ * Skor "demand" untuk RANKING entry (bukan gate). APR mentah TAK memimpin ranking — di pool
+ * meme ilikuid fee-growth artefak bikin APR miliaran% (noise). Penggerak = akselerasi volume
+ * + tren TVL (dipakai RAW, tak di-clamp-0, biar bisa bedakan yg memudar -12% vs -19%); volume
+ * absolut jadi basis; APR cuma tie-break KECIL. Akselerasi/TVL di-clamp agar spike ekstrem tak
+ * mendominasi. Makin tinggi = demand paling nyata (naik / paling tak memudar).
  */
+/** Format bertanda: -19 → "-19", 15 → "+15" (hindari "+-19%" di log). */
+const sgn = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(0)}`
+
 export function demandScore(r: YieldRow): number {
-  return (
-    Math.max(0, r.demandAccelPct) / 100 + // akselerasi volume (utama)
-    Math.max(0, r.tvlTrendPct) / 100 + // likuiditas naik = demand nyata
-    Math.log10((r.volEth ?? 0) + 1) / 3 + // volume absolut (fee potensial)
-    Math.min(r.apr20, 500) / 1000 // APR di-cap (tie-breaker kecil, bukan penggerak)
-  )
+  const accel = Math.max(-100, Math.min(200, r.demandAccelPct)) / 100 // [-1 .. +2] penggerak
+  const tvl = Math.max(-50, Math.min(100, r.tvlTrendPct)) / 100 // [-0.5 .. +1] penggerak
+  const vol = Math.log10((r.volEth ?? 0) + 1) / 2 // ~0..1.5 basis (fee potensial nyata)
+  const aprTie = Math.min(r.apr20, 300) / 3000 // 0..0.1 tie-break kecil (bukan penggerak)
+  return accel + tvl + vol + aprTie
 }
 
 export function decide(
@@ -158,7 +162,7 @@ export function decide(
       pair: r.pair,
       widthFactor: width,
       sizeFraction: frac,
-      reason: `demand +${r.demandAccelPct.toFixed(0)}% · TVL ${r.tvlTrendPct >= 0 ? '+' : ''}${r.tvlTrendPct.toFixed(0)}% · vol ${(r.volEth ?? 0).toFixed(0)} ETH/win · size ${(frac * 100).toFixed(0)}% · APR ${r.apr20.toFixed(0)}% (±${((width - 1) * 100).toFixed(0)}%), umur ${(r.ageDays ?? 0).toFixed(1)}d`,
+      reason: `demand ${sgn(r.demandAccelPct)}% · TVL ${sgn(r.tvlTrendPct)}% · vol ${(r.volEth ?? 0).toFixed(0)} ETH/win · size ${(frac * 100).toFixed(0)}% · APR ${r.apr20.toFixed(0)}% (±${((width - 1) * 100).toFixed(0)}%), umur ${(r.ageDays ?? 0).toFixed(1)}d`,
     })
   })
   return decisions
