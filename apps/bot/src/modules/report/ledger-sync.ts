@@ -1,4 +1,6 @@
+import { getAddress, parseAbi } from 'viem'
 import { ADDRESSES } from '../../config/index.ts'
+import { client } from '../../core/chain.ts'
 import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
 
@@ -18,35 +20,59 @@ const BOT_CONTRACTS = new Set(
 )
 
 type Tx = { from?: string; to?: string; value?: string }
-type TokenBal = { contractAddress?: string; balance?: string; decimals?: string; type?: string }
+
+const erc20Abi = parseAbi([
+  'function balanceOf(address) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+])
 
 /**
  * Nilai (ETH) token ERC20 LEPAS yg dipegang agent — sisa/stuck dari mint parsial, BUKAN
  * yg terkunci di LP (itu diwakili NFT posisi & dihitung terpisah). GMGN menghitung ini
  * sbg holding; PnL-saldo kita harus juga, biar cocok. Harga token = snapshot pool terbaru
  * (ETH selalu currency0, token currency1 → sqrtP² = token/ETH → ETH = balance / (token/ETH)).
+ *
+ * Dibaca ON-CHAIN (balanceOf) bukan Blockscout tokenlist — explorer di chain ini flaky
+ * (kadang "No tokens found" utk saldo nyata). Kandidat token = currency1 tiap pool yg
+ * pernah disentuh wallet (dari executions) — bounded & cukup (stuck token asalnya dari sini).
  */
 async function tokenHoldingsEth(db: ReturnType<typeof openDb>, agent: string): Promise<number> {
-  const url = `${EXPLORER}/api?module=account&action=tokenlist&address=${agent}`
-  const r = await fetch(url)
-  const j = (await r.json()) as { result?: TokenBal[] | string }
-  if (!Array.isArray(j.result)) return 0
+  const toks = db
+    .prepare(
+      `SELECT DISTINCT lower(p.currency1) c FROM pools p
+       WHERE p.pool_id IN (SELECT DISTINCT pool_id FROM executions WHERE lower(wallet) = ?)
+         AND p.currency1 != '0x0000000000000000000000000000000000000000'`,
+    )
+    .all(agent.toLowerCase()) as { c: string }[]
   const priceStmt = db.prepare(
     `SELECT ps.sqrt_price_x96 sp FROM pool_snapshots ps
      JOIN pools p ON p.pool_id = ps.pool_id
      WHERE lower(p.currency1) = ? ORDER BY ps.ts DESC LIMIT 1`,
   )
   let total = 0
-  for (const t of j.result) {
-    if (t.type && t.type !== 'ERC-20') continue // NFT posisi (UNI-V4-POSM) dll — abaikan
-    const dec = Number(t.decimals || '18')
-    const bal = Number(t.balance || '0') / 10 ** dec
-    if (!(bal > 0)) continue
-    const snap = priceStmt.get((t.contractAddress || '').toLowerCase()) as { sp: string } | undefined
-    if (!snap) continue // tak ada pool → tak bisa dinilai; konservatif (0), tak salah-tinggi
-    const sqrtP = Number(BigInt(snap.sp)) / 2 ** 96
-    const price = sqrtP * sqrtP // token1/token0 = token per ETH
-    if (price > 0) total += bal / price
+  for (const { c } of toks) {
+    try {
+      const bal = (await client.readContract({
+        address: getAddress(c),
+        abi: erc20Abi,
+        functionName: 'balanceOf',
+        args: [agent as `0x${string}`],
+      })) as bigint
+      if (bal === 0n) continue
+      const snap = priceStmt.get(c) as { sp: string } | undefined
+      if (!snap) continue // tak ada pool → tak bisa dinilai; konservatif (0), tak salah-tinggi
+      const dec = (await client.readContract({
+        address: getAddress(c),
+        abi: erc20Abi,
+        functionName: 'decimals',
+      })) as number
+      const human = Number(bal) / 10 ** Number(dec)
+      const sqrtP = Number(BigInt(snap.sp)) / 2 ** 96
+      const price = sqrtP * sqrtP // token1/token0 = token per ETH
+      if (price > 0) total += human / price
+    } catch {
+      // token aneh / RPC gagal — lewati (konservatif), jangan gagalkan seluruh ledger
+    }
   }
   return total
 }
