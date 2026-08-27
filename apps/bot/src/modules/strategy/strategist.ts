@@ -134,22 +134,32 @@ export function decide(
     }
   }
 
-  // isi slot kosong dengan kandidat APR tertinggi
-  // ponytail: sizing flat 1/maxPools; sizing berbobot risiko nanti bersama executor
-  let slots = cfg.maxPools - kept.length
+  // isi slot kosong: pilih kandidat demand-tertinggi (eligible sudah terurut demandScore)
+  const slots = cfg.maxPools - kept.length
+  const picks: YieldRow[] = []
   for (const r of eligible.values()) {
-    if (slots <= 0) break
+    if (picks.length >= slots) break
     if (kept.includes(r.poolId)) continue
+    picks.push(r)
+  }
+  // CONVICTION SIZING: bobot posisi ∝ √(demandScore) — taruh modal lebih di sinyal terkuat,
+  // bukan flat 1/N. √ mengompres ekstrem (skor 10× → ukuran ~3×, semangat ¼-Kelly: condong
+  // ke konviksi tanpa over-concentrate 1 taruhan). Total = picks/maxPools (budget sama spt
+  // flat, cuma redistribusi). Skor ~0 → fallback equal. Makin ngefek saat fund besar.
+  const weights = picks.map((r) => Math.sqrt(Math.max(demandScore(r), 0.01)))
+  const wSum = weights.reduce((a, b) => a + b, 0)
+  const totalFrac = picks.length / cfg.maxPools
+  picks.forEach((r, i) => {
     const width = r.widthFactor ?? cfg.widthFactor
+    const frac = wSum > 0 ? totalFrac * (weights[i]! / wSum) : totalFrac / picks.length
     decisions.push({
       action: 'ENTER',
       poolId: r.poolId,
       pair: r.pair,
       widthFactor: width,
-      sizeFraction: 1 / cfg.maxPools,
-      reason: `demand +${r.demandAccelPct.toFixed(0)}% · TVL ${r.tvlTrendPct >= 0 ? '+' : ''}${r.tvlTrendPct.toFixed(0)}% · vol ${(r.volEth ?? 0).toFixed(0)} ETH/win · APR ${r.apr20.toFixed(0)}% (±${((width - 1) * 100).toFixed(0)}%), umur ${(r.ageDays ?? 0).toFixed(1)}d`,
+      sizeFraction: frac,
+      reason: `demand +${r.demandAccelPct.toFixed(0)}% · TVL ${r.tvlTrendPct >= 0 ? '+' : ''}${r.tvlTrendPct.toFixed(0)}% · vol ${(r.volEth ?? 0).toFixed(0)} ETH/win · size ${(frac * 100).toFixed(0)}% · APR ${r.apr20.toFixed(0)}% (±${((width - 1) * 100).toFixed(0)}%), umur ${(r.ageDays ?? 0).toFixed(1)}d`,
     })
-    slots--
-  }
+  })
   return decisions
 }

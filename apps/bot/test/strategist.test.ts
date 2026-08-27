@@ -54,7 +54,7 @@ test('decide: momentum — token naik masuk, token turun tajam ditolak', () => {
   )
 })
 
-test('decide: ENTER maksimal maxPools, urut APR tertinggi', () => {
+test('decide: ENTER maksimal maxPools, demand-tertinggi diprioritaskan', () => {
   const out = decide(
     [
       row({ poolId: '0xa', apr20: 60 }),
@@ -68,7 +68,27 @@ test('decide: ENTER maksimal maxPools, urut APR tertinggi', () => {
     ['ENTER', '0xb'],
     ['ENTER', '0xc'],
   ])
-  assert.equal(out[0]!.sizeFraction, 0.5)
+  // conviction sizing: 2 slot terisi → total ~1.0 fund; pick lebih kuat dapat porsi ≥.
+  const sum = out.reduce((a, d) => a + d.sizeFraction, 0)
+  assert.ok(Math.abs(sum - 1) < 1e-9, `total size ~1.0, got ${sum}`)
+  assert.ok(out[0]!.sizeFraction >= out[1]!.sizeFraction)
+})
+
+test('decide: conviction sizing — sinyal kuat porsi lebih besar, √-kompres (tak ekstrem), budget terjaga', () => {
+  const out = decide(
+    [
+      row({ poolId: '0xstrong', demandAccelPct: 300, tvlTrendPct: 80, volEth: 400 }),
+      row({ poolId: '0xweak', demandAccelPct: 0, tvlTrendPct: 0, volEth: 5 }),
+    ],
+    cfg, // maxPools 2 → total frac ~1.0
+    { paused: false, held: [] },
+  )
+  const byId = Object.fromEntries(out.map((d) => [d.poolId, d.sizeFraction]))
+  const sum = out.reduce((a, d) => a + d.sizeFraction, 0)
+  assert.ok(Math.abs(sum - 1) < 1e-9, `budget terjaga ~1.0, got ${sum}`)
+  assert.ok(byId['0xstrong']! > byId['0xweak']!, 'sinyal kuat porsi lebih besar')
+  // √-kompres: rasio ukuran < rasio skor mentah (tak over-concentrate) → strong < 80% fund.
+  assert.ok(byId['0xstrong']! < 0.8, `tak ekstrem, got ${byId['0xstrong']}`)
 })
 
 test('decide: held yang gagal gate -> EXIT, yang lolos -> HOLD, slot sisa diisi ENTER', () => {
