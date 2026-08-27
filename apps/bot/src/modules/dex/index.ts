@@ -1,5 +1,6 @@
 import { DEX_KIND } from '../../config/index.ts'
 import type { DexAdapter } from './adapter.ts'
+import { pancakeInfinityAdapter } from './pancake-infinity.ts'
 import { uniswapV4Adapter } from './uniswap-v4.ts'
 
 export type { DexAdapter } from './adapter.ts'
@@ -18,9 +19,7 @@ export function getDexAdapter(): DexAdapter {
       cached = uniswapV4Adapter
       return cached
     case 'pancake-infinity':
-      throw new Error(
-        'PancakeInfinityAdapter belum diimplementasi (sedang dibangun). ' +
-          'Sementara set CHAIN=robinhood untuk jalur Uniswap v4.',
-      )
+      cached = pancakeInfinityAdapter
+      return cached
   }
 }
