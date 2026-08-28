@@ -10,21 +10,21 @@ import { getLocale } from "../lib/i18n-server";
 const fontSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lp.ifajar.dev";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nebu.ifajar.dev";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "LP Bot | Automated Liquidity on BNB Chain",
-    template: "%s | LP Bot",
+    default: "Nebu | Automated Liquidity on BNB Chain",
+    template: "%s | Nebu",
   },
   description:
     "Automated PancakeSwap Infinity liquidity provision on BNB Smart Chain: survivor-pool " +
     "selection, concentrated ranges, an on-chain vault, and PnL benchmarked against HODL.",
   openGraph: {
-    title: "LP Bot | Automated Liquidity on BNB Chain",
+    title: "Nebu | Automated Liquidity on BNB Chain",
     description: "Automated PancakeSwap Infinity liquidity provision, benchmarked against HODL.",
-    siteName: "LP Bot",
+    siteName: "Nebu",
     type: "website",
   },
   twitter: { card: "summary_large_image" },

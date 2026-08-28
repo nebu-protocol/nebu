@@ -14,7 +14,7 @@ export default async function PrivacyPage() {
         <h1 className="text-2xl font-semibold">{t("Privacy")}</h1>
         <p className="mt-4 text-soft">
           {t(
-            "LP Bot tidak mengumpulkan data pribadi. Yang kami simpan hanya data on-chain publik (pool, posisi) dan—bila kamu mengaktifkan automation—private key wallet yang kamu berikan, disimpan terenkripsi (AES-256-GCM) di server dan hanya dipakai untuk menjalankan strategi LP. Connect wallet hanya membaca alamat publik.",
+            "Nebu tidak mengumpulkan data pribadi. Yang kami simpan hanya data on-chain publik (pool, posisi) dan—bila kamu mengaktifkan automation—private key wallet yang kamu berikan, disimpan terenkripsi (AES-256-GCM) di server dan hanya dipakai untuk menjalankan strategi LP. Connect wallet hanya membaca alamat publik.",
           )}
         </p>
       </main>

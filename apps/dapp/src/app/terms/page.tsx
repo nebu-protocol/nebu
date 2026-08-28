@@ -14,7 +14,7 @@ export default async function TermsPage() {
         <h1 className="text-2xl font-semibold">{t("Terms")}</h1>
         <p className="mt-4 text-soft">
           {t(
-            "LP Bot disediakan apa adanya, tanpa jaminan. Menyediakan likuiditas berisiko (impermanent loss, rug, kehilangan modal). Angka APR/PnL bersifat gross dan simulasi—bukan jaminan hasil dan bukan nasihat finansial. Dengan menggunakan layanan ini kamu menerima seluruh risiko atas dana yang kamu kelola.",
+            "Nebu disediakan apa adanya, tanpa jaminan. Menyediakan likuiditas berisiko (impermanent loss, rug, kehilangan modal). Angka APR/PnL bersifat gross dan simulasi—bukan jaminan hasil dan bukan nasihat finansial. Dengan menggunakan layanan ini kamu menerima seluruh risiko atas dana yang kamu kelola.",
           )}
         </p>
       </main>

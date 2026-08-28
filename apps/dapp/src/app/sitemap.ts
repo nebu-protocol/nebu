@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lp.ifajar.dev";
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nebu.ifajar.dev";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

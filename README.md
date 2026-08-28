@@ -1,4 +1,4 @@
-# LP Bot — Autonomous Liquidity Agent on BNB Chain
+# Nebu — Autonomous Liquidity Agent on BNB Chain
 
 An AI agent that runs a **concentrated‑liquidity strategy on PancakeSwap Infinity (BNB Smart Chain)** end‑to‑end: it discovers pools, ranks them by real demand, sizes positions by conviction, provides liquidity, and manages exits — all while the funds sit in an **on‑chain vault the agent can never drain**. Every position's PnL is benchmarked against simply holding (HODL).
 

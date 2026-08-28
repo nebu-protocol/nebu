@@ -13,11 +13,11 @@ function secret(): string {
   return s;
 }
 
-const DOMAIN = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lp.ifajar.dev";
+const DOMAIN = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nebu.ifajar.dev";
 
 /** Pesan yang ditandatangani wallet — mengikat address + nonce + domain. */
 export function siweMessage(address: string, nonce: string): string {
-  return `LP Bot ingin memverifikasi kepemilikan wallet ini.\n\nAddress: ${address}\nDomain: ${DOMAIN}\nNonce: ${nonce}\n\nTanda tangan ini tidak memicu transaksi apa pun.`;
+  return `Nebu ingin memverifikasi kepemilikan wallet ini.\n\nAddress: ${address}\nDomain: ${DOMAIN}\nNonce: ${nonce}\n\nTanda tangan ini tidak memicu transaksi apa pun.`;
 }
 
 export async function issueNonce(): Promise<string> {

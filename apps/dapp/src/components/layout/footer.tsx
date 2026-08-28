@@ -10,8 +10,8 @@ export async function Footer() {
       <div className="mx-auto max-w-6xl px-4 py-10">
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex items-center gap-2.5">
-            <Image src="/lp-logo.png" alt="LP Bot" width={22} height={22} className="rounded" />
-            <span className="text-sm font-medium">LP Bot © 2026</span>
+            <Image src="/lp-logo.png" alt="Nebu" width={22} height={22} className="rounded" />
+            <span className="text-sm font-medium">Nebu © 2026</span>
           </div>
           <Link href="/terms" className="text-sm text-soft hover:text-ink">
             {t("Terms")}
@@ -24,7 +24,7 @@ export async function Footer() {
         <div className="mt-8 text-[11px] leading-relaxed text-faint">
           <p className="mb-3 max-w-3xl">
             {t(
-              "LP Bot menyediakan automated liquidity provision di PancakeSwap Infinity (BNB Smart Chain). Semua angka APR/PnL bersifat gross (pre-IL), berbasis simulasi, dan bukan jaminan hasil. Menyediakan likuiditas pada pool volatil (mis. memecoin) berisiko tinggi termasuk impermanent loss dan kehilangan sebagian/seluruh modal. Tidak ada di halaman ini yang merupakan nasihat investasi, hukum, pajak, atau finansial.",
+              "Nebu menyediakan automated liquidity provision di PancakeSwap Infinity (BNB Smart Chain). Semua angka APR/PnL bersifat gross (pre-IL), berbasis simulasi, dan bukan jaminan hasil. Menyediakan likuiditas pada pool volatil (mis. memecoin) berisiko tinggi termasuk impermanent loss dan kehilangan sebagian/seluruh modal. Tidak ada di halaman ini yang merupakan nasihat investasi, hukum, pajak, atau finansial.",
             )}
           </p>
         </div>

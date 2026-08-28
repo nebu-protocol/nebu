@@ -49,7 +49,7 @@ export function Providers({
               blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
               chainId: 4663,
               chainName: "Robinhood Chain",
-              iconUrls: ["https://lp.ifajar.dev/robinhood-chain.png"],
+              iconUrls: ["https://nebu.ifajar.dev/robinhood-chain.png"],
               name: "Robinhood Chain",
               nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
               networkId: 4663,
