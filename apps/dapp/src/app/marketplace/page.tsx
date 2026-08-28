@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
-import { AgentCard, type CardMetric } from "@/components/agent-card";
+import { type CardMetric } from "@/components/agent-card";
+import { AgentsExplorer, type AgentItem } from "@/components/agents-explorer";
 import { Header } from "@/components/layout/header";
 import { PoolsExplorer } from "@/components/pools-explorer";
 import { AGENTS, type AgentMeta } from "@/lib/agents";
@@ -10,7 +12,6 @@ import { getEstApr, getLeaderboard, getPoolsTable, getTopPools } from "@/lib/lpd
 export const metadata: Metadata = { title: "Agent Marketplace" };
 export const dynamic = "force-dynamic";
 
-// Metrik live flagship (perfSource 'lp') dari DB; agent lain tampil status track-record.
 function metricsFor(agent: AgentMeta, live: { apr: number | null; net: number | null; pools: number }): CardMetric[] {
   if (agent.perfSource === "lp") {
     return [
@@ -30,32 +31,54 @@ export default async function MarketplacePage() {
   const net = board.length ? board.reduce((s, r) => s + r.avgNet, 0) / board.length : null;
   const pools = getPoolsTable(30);
   const live = { apr, net, pools: getTopPools(30).length };
+  const items: AgentItem[] = AGENTS.map((a) => ({ agent: a, metrics: metricsFor(a, live) }));
 
   return (
     <>
       <Header />
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        {/* Featured agents */}
-        <section className="rounded-2xl border border-line/60 bg-shade/30 p-4 sm:p-5">
-          <div className="mb-4 flex flex-wrap items-baseline gap-2">
-            <h2 className="text-lg font-semibold">✦ {t("Agents")}</h2>
-            <span className="rounded-full bg-white px-2 py-0.5 text-xs text-soft ring-1 ring-line/60">{AGENTS.length}</span>
-            <p className="text-sm text-soft">{t("Non-custodial · hire and revoke anytime")}</p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {AGENTS.map((a) => (
-              <AgentCard key={a.id} agent={a} metrics={metricsFor(a, live)} />
-            ))}
+      <main className="mx-auto max-w-6xl px-4 py-6">
+        {/* Hero banner */}
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-indigo-700 to-slate-900 px-6 py-16 text-center text-white sm:py-24">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-40"
+            style={{
+              backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.18) 1px, transparent 0)",
+              backgroundSize: "26px 26px",
+            }}
+          />
+          <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-fuchsia-500/30 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-sky-400/20 blur-3xl" />
+          <div className="relative">
+            <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">{t("Hire onchain agents")}</h1>
+            <p className="mx-auto mt-4 max-w-xl text-base text-white/80 sm:text-lg">
+              {t("Put your capital to work in a vault they can't withdraw from — pay only when they perform.")}
+            </p>
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              <a href="#agents" className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-ink transition hover:opacity-90">
+                {t("Browse agents")}
+              </a>
+              <Link
+                href="/portfolio"
+                className="rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white ring-1 ring-white/30 backdrop-blur transition hover:bg-white/20"
+              >
+                {t("Connect wallet")}
+              </Link>
+            </div>
           </div>
         </section>
 
-        {/* Opportunities — dense grid of real BNB pools */}
-        <section className="mt-8">
+        {/* Agents — filter + grid */}
+        <div className="mt-8">
+          <AgentsExplorer items={items} />
+        </div>
+
+        {/* Opportunities — real BNB pools table */}
+        <div className="mt-10">
           <PoolsExplorer pools={pools} />
-        </section>
+        </div>
 
         <p className="mt-6 text-xs text-faint">
-          {t("All pairs are real BNB Chain pools. Agents run on BSC; live performance is read on-chain and reconciles with explorers.")}
+          {t("All agents run on BNB Smart Chain; pools are real PancakeSwap pairs. Live performance reconciles with explorers.")}
         </p>
       </main>
     </>
