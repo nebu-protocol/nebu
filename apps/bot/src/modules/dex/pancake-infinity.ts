@@ -15,6 +15,7 @@ import {
   encodeInfinityMint,
   encodeInfinitySwapFromNative,
   encodeInfinitySwapToNative,
+  encodeParameters,
   resolveParameters,
 } from './pancake-infinity-encode.ts'
 
@@ -81,6 +82,42 @@ export function infinityPoolId(pool: PoolRef): `0x${string}` {
       ],
     ),
   )
+}
+
+const hookBitmapAbi = parseAbi(['function getHooksRegistrationBitmap() view returns (uint16)'])
+const bitmapCache = new Map<string, bigint | null>() // hook(lc) → bitmap; null = hook tanpa getter (skip)
+
+/**
+ * Pastikan pool.parameters (bytes32) TEPAT sebelum encode WRITE. Sumber kebenaran = event
+ * Initialize (disimpan discovery: kolom `parameters`) — pakai itu kalau ada. Fallback untuk
+ * baris DB LAMA (pra-kolom, parameters NULL):
+ *   - no-hook  → tickSpacing<<16 (eksak).
+ *   - ber-hook → rekonstruksi (tickSpacing<<16)|hook.getHooksRegistrationBitmap(); mereproduksi
+ *     PERSIS parameters saat Initialize utk hook resmi (bit [0,16)=hook-perms, [16,40)=tickSpacing;
+ *     diverifikasi vs BNB/CAKE). Hook memecoin custom sering TAK punya getter → throw → executor
+ *     SKIP bersih (fail-safe; preflight juga menjaga dari salah-poolId). Jalan tepat = re-run
+ *     `backfill` (UPSERT isi parameters eksak dari event). Mutasi in-place, cache per-hook.
+ */
+export async function ensureParameters(pool: PoolRef): Promise<`0x${string}`> {
+  const stored = pool.parameters
+  if (stored && /^0x[0-9a-fA-F]{64}$/.test(stored)) return stored as `0x${string}`
+  const hook = (pool.hooks ?? '').toLowerCase()
+  if (!hook || hook === NATIVE) return (pool.parameters = encodeParameters(pool.tick_spacing)) // no-hook: eksak
+  let bm = bitmapCache.get(hook)
+  if (bm === undefined) {
+    try {
+      bm = BigInt(
+        (await client.readContract({ address: hook as `0x${string}`, abi: hookBitmapAbi, functionName: 'getHooksRegistrationBitmap' })) as number,
+      )
+    } catch {
+      bm = null // hook tanpa getter — tandai supaya tak dibaca ulang
+    }
+    bitmapCache.set(hook, bm)
+  }
+  if (bm === null)
+    throw new Error(`parameters pool ber-hook ${hook.slice(0, 10)} tak bisa di-derive (hook tanpa getter) — jalankan backfill`)
+  const params = `0x${((BigInt(pool.tick_spacing) << 16n) | bm).toString(16).padStart(64, '0')}` as `0x${string}`
+  return (pool.parameters = params)
 }
 
 const balanceOf = (token: `0x${string}`, owner: `0x${string}`) =>
@@ -153,6 +190,7 @@ export const pancakeInfinityAdapter: DexAdapter = {
   },
 
   async mint(opts) {
+    await ensureParameters(opts.pool) // pool ber-hook: parameters TEPAT sebelum encode (poolId benar)
     const token1 = opts.pool.currency1 as `0x${string}`
     const amount1 = await balanceOf(token1, opts.account.address)
     if (amount1 <= 0n) throw new Error('token1 balance 0 — swap belum settle?')
@@ -232,6 +270,7 @@ export const pancakeInfinityAdapter: DexAdapter = {
 
   async swapToNative(opts) {
     if (opts.pool.currency0 !== NATIVE) return null
+    await ensureParameters(opts.pool) // pool ber-hook: parameters TEPAT (poolId benar) sebelum swap/quote
     const token1 = opts.pool.currency1 as `0x${string}`
     const amountIn = await balanceOf(token1, opts.account.address)
     if (amountIn <= 0n) return null
@@ -262,6 +301,7 @@ export const pancakeInfinityAdapter: DexAdapter = {
     // Spot dari slot0: token1_out ≈ amountIn(native) × price, price=(sqrtP/Q96)²=token1/token0.
     // ponytail: spot (bukan CLQuoter) — cukup utk minOut+cek keterjangkauan; preflight jaga revert.
     try {
+      await ensureParameters(pool) // enrich SEBELUM infinityPoolId; juga menutup encodeSwapFromNative (sync) sesudahnya
       const [sqrtP] = await rawSlot0(infinityPoolId(pool))
       if (sqrtP <= 0n) return null
       return (amountInWei * sqrtP * sqrtP) / (Q96 * Q96)

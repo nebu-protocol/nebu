@@ -32,10 +32,16 @@ export async function run() {
   let chunk: bigint = SCAN.initialChunk
   let totalFound = 0
 
+  // UPSERT (bukan INSERT OR IGNORE): baris pool LAMA (dibuat sebelum kolom `parameters` ada)
+  // punya parameters NULL → tak bisa derive poolId pool BER-HOOK (bit hook-perms hilang) →
+  // tx revert. Re-scan mengisi parameters EKSAK dari event Initialize saat masih NULL. Field
+  // lain tak disentuh (immutable sejak Initialize).
   const insert = db.prepare(
-    `INSERT OR IGNORE INTO pools
+    `INSERT INTO pools
      (pool_id, currency0, currency1, fee, tick_spacing, hooks, parameters, block_number, created_at, tx_hash)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(pool_id) DO UPDATE SET parameters = excluded.parameters
+       WHERE pools.parameters IS NULL AND excluded.parameters IS NOT NULL`,
   )
   // ponytail: timestamp diestimasi via interpolasi linear [from..head] (2 request, bukan 1
   // getBlock per pool — RPC publik 429). Galat ~menit. Anchor di `from` (bukan blok 1) biar

@@ -4,7 +4,7 @@ import { client } from '../../core/chain.ts'
 import { liquidityForAmounts, rangeFromWidth, sqrtRatioX96AtTick } from '../executor/liquidity-math.ts'
 import { tokenIdFromLogs, wcFor } from '../executor/live.ts'
 import type { DexAdapter } from './adapter.ts'
-import { infinityPoolId } from './pancake-infinity.ts'
+import { ensureParameters, infinityPoolId } from './pancake-infinity.ts'
 import { resolveParameters } from './pancake-infinity-encode.ts'
 import type { Encoded, PoolRef } from './types.ts'
 
@@ -84,6 +84,7 @@ export function withVault(base: DexAdapter, vault: `0x${string}`): DexAdapter {
     ...base,
 
     async mint(opts) {
+      await ensureParameters(opts.pool) // pool ber-hook: parameters TEPAT sebelum toInfinityPoolKey
       const token1 = opts.pool.currency1 as `0x${string}`
       const amount1 = await balanceOf(token1, vault) // saldo token1 ADA DI VAULT
       if (amount1 <= 0n) throw new Error('vault token1 balance 0 — swap belum settle?')
@@ -151,6 +152,7 @@ export function withVault(base: DexAdapter, vault: `0x${string}`): DexAdapter {
 
     async swapToNative(opts) {
       if (opts.pool.currency0 !== NATIVE) return null
+      await ensureParameters(opts.pool) // pool ber-hook: parameters TEPAT (poolId benar) sebelum swap
       const token1 = opts.pool.currency1 as `0x${string}`
       const amountIn = await balanceOf(token1, vault) // token1 ada di vault
       if (amountIn <= 0n) return null

@@ -8,7 +8,7 @@ import {
   encodeParameters,
   resolveParameters,
 } from '../src/modules/dex/pancake-infinity-encode.ts'
-import { infinityPoolId } from '../src/modules/dex/pancake-infinity.ts'
+import { ensureParameters, infinityPoolId } from '../src/modules/dex/pancake-infinity.ts'
 import { ADDRESSES, NATIVE } from '../src/config/index.ts'
 
 // Tes berjalan di profil default (CHAIN=bsc) → ADDRESSES = PancakeSwap Infinity.
@@ -31,6 +31,20 @@ test('resolveParameters: pakai raw bytes32 tersimpan (hook) / derive dari tickSp
   assert.equal(resolveParameters({ ...pool, parameters: hooked }), hooked) // pakai raw
   assert.equal(resolveParameters({ ...pool, parameters: null }), encodeParameters(pool.tick_spacing)) // derive
   assert.equal(resolveParameters({ ...pool, parameters: 'bad' }), encodeParameters(pool.tick_spacing)) // invalid → derive
+})
+
+test('ensureParameters: parameters tersimpan valid → passthrough (tak sentuh jaringan)', async () => {
+  const stored = `0x${((10n << 16n) | 0xc2n).toString(16).padStart(64, '0')}`
+  const p = { ...pool, hooks: '0x32C59D556B16DB81DFc32525eFb3CB257f7e493d', parameters: stored }
+  assert.equal(await ensureParameters(p), stored) // pakai raw tersimpan, tak baca hook
+  assert.equal(p.parameters, stored)
+})
+
+test('ensureParameters: no-hook tanpa parameters → tickSpacing<<16 eksak (tak sentuh jaringan)', async () => {
+  const p = { ...pool, hooks: NATIVE, parameters: null }
+  const got = await ensureParameters(p)
+  assert.equal(got, encodeParameters(pool.tick_spacing)) // eksak utk no-hook
+  assert.equal(p.parameters, got) // mutasi in-place
 })
 
 test('infinityPoolId: hook-perms bits di parameters mengubah poolId (pool ber-hook ≠ no-hook)', () => {
