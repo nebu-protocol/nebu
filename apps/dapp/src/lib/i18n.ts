@@ -56,6 +56,7 @@ export const ID_DICT: Record<string, string> = {
   Portfolio: "Portofolio",
   Positions: "Posisi",
   "Price feed (ETH/USD)": "Feed harga (ETH/USD)",
+  "Price feed": "Feed harga",
   "Price-stop % (drop token)": "Price-stop % (token turun)",
   Privacy: "Privasi",
   "Processing…": "Memproses…",
@@ -197,6 +198,12 @@ export const EN_DICT: Record<string, string> = {
     "Average win ÷ average loss on closed positions. Strategy edge is positive at ≥ ~4.2:1 on a low win-rate; below that, the edge is thin/negative.",
   "Rata-rata untung ÷ rugi posisi tertutup. Target ≥ 4.2:1.":
     "Average win ÷ loss on closed positions. Target ≥ 4.2:1.",
+  Jumlah: "Amount",
+  "On-chain nyata · Net vs HODL = nilai posisi sekarang vs modal awal.":
+    "Real on-chain · Net vs HODL = current position value vs initial deposit.",
+  "dari saldo agent": "from agent balance",
+  "Tutup semua posisi (burn + swap balik ke": "Close all positions (burn + swap back to",
+  "), lalu tarik seluruh saldo ke owner.": "), then withdraw the entire balance to the owner.",
   SIMULASI: "SIMULATED",
   "aksi on-chain": "on-chain actions",
   "fase:": "phase:",

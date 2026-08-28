@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { Header } from "@/components/layout/header";
+import { NATIVE } from "@/lib/chain";
 import { getT } from "@/lib/i18n-server";
 import { checkRpc, getSystemStatus } from "@/lib/lpdata";
 
@@ -85,7 +86,7 @@ export default async function StatusPage() {
             sub={`${t("latensi")} ${rpc.ms}ms`}
           />
           <StatusCard
-            label={t("Price feed (ETH/USD)")}
+            label={`${t("Price feed")} (${NATIVE}/USD)`}
             state={priceState}
             value={s.price.ethUsd ? `$${s.price.ethUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "—"}
             sub={`${s.price.source ?? "?"} · ${ageStr(priceAge)}`}

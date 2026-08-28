@@ -5,8 +5,10 @@ import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ChainIcon } from "@/components/icons";
 import { SubmitButton } from "@/components/submit-button";
 import { Toggle } from "@/components/toggle";
+import { ACTIVE_CHAIN, NATIVE } from "@/lib/chain";
 import { useT } from "@/lib/i18n-client";
 import type { OwnedWallet } from "@/server/wallet-actions";
 import {
@@ -119,7 +121,7 @@ export function ManagePanel({
       <div className="rounded-2xl border border-line/60 p-5">
         <h3 className="text-sm font-medium">{t("Agent wallet")}</h3>
         <p className="mt-2 text-sm text-soft">
-          {t("Bot bikin wallet baru khusus kamu. Kamu")} <b>{t("deposit ETH")}</b>{" "}
+          {t("Bot bikin wallet baru khusus kamu. Kamu")} <b>deposit {NATIVE}</b>{" "}
           {t("ke address-nya, bot LP dari saldo itu, dan bisa")} <b>{t("withdraw")}</b>{" "}
           {t("balik ke wallet ini kapan saja — tanpa share private key sendiri.")}
         </p>
@@ -157,9 +159,8 @@ export function ManagePanel({
         <>
           <div className="rounded-2xl bg-shade/50 p-4">
             <div className="mb-1 flex items-start justify-between">
-              <span className="text-sm text-soft">{t("Deposit ETH")}</span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/tokens/eth.png" alt="ETH" className="h-7 w-7 rounded-full" />
+              <span className="text-sm text-soft">Deposit {NATIVE}</span>
+              <ChainIcon size={28} />
             </div>
             <input
               inputMode="decimal"
@@ -171,7 +172,7 @@ export function ManagePanel({
             <div className="mt-2 flex items-center justify-between text-sm text-soft">
               <span>{ethUsd ? fmtUsd(amountEth * ethUsd) : "—"}</span>
               <div className="flex items-center gap-2">
-                <span>{t("Wallet:")} {ownerBalanceEth === null ? "—" : `${fmtEth(ownerBalanceEth)} ETH`}</span>
+                <span>{t("Wallet:")} {ownerBalanceEth === null ? "—" : `${fmtEth(ownerBalanceEth)} ${NATIVE}`}</span>
                 <button
                   type="button"
                   onClick={() => setAmount(fmtEth(maxDeposit))}
@@ -189,13 +190,12 @@ export function ManagePanel({
               label={t("Network")}
               value={
                 <span className="flex items-center justify-end gap-1.5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/robinhood-chain.png" alt="" className="h-4 w-4 rounded-full" />
-                  Robinhood Chain
+                  <ChainIcon size={16} />
+                  {ACTIVE_CHAIN.name}
                 </span>
               }
             />
-            <Row label={t("Deposit (ETH)")} value={fmtEth(amountEth)} />
+            <Row label={`Deposit (${NATIVE})`} value={fmtEth(amountEth)} />
             <Row
               label={t("Fee APR")}
               value={estApr === null ? "—" : `✨ ${fmtApr(estApr)}`}
@@ -232,7 +232,7 @@ export function ManagePanel({
           <div className="rounded-2xl bg-shade/50 p-4">
             <div className="text-sm text-soft">{t("Saldo agent")}</div>
             <div className="mt-1 text-3xl font-semibold tracking-tight">
-              {balanceEth === null ? "—" : `${fmtEth(balanceEth)} ETH`}
+              {balanceEth === null ? "—" : `${fmtEth(balanceEth)} ${NATIVE}`}
             </div>
             {ethUsd && balanceEth !== null && (
               <div className="mt-0.5 text-sm text-soft">{fmtUsd(balanceEth * ethUsd)}</div>
@@ -257,7 +257,7 @@ export function ManagePanel({
 
           {wMode === "custom" ? (
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-soft">{t("Jumlah (ETH)")}</span>
+              <span className="text-soft">{t("Jumlah")} ({NATIVE})</span>
               <input
                 name="amountEth"
                 type="number"
@@ -290,7 +290,7 @@ export function ManagePanel({
             {t("Cabut semua LP + withdraw semua")}
           </SubmitButton>
           <p className="mt-1.5 text-center text-[11px] text-soft">
-            {t("Tutup semua posisi (burn + swap balik ke ETH), lalu tarik seluruh saldo ke owner.")}
+            {t("Tutup semua posisi (burn + swap balik ke")} {NATIVE}{t("), lalu tarik seluruh saldo ke owner.")}
           </p>
         </form>
       )}
@@ -313,7 +313,7 @@ export function ManagePanel({
           )}
           <form action={updateWalletAction} className="flex flex-col gap-3">
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-soft">{t("Fund (ETH) — dari saldo agent")}</span>
+              <span className="text-soft">Fund ({NATIVE}) — {t("dari saldo agent")}</span>
               <div className="flex items-center gap-1">
                 <input
                   name="fundEth"
@@ -334,11 +334,11 @@ export function ManagePanel({
                 </button>
               </div>
               <span className="text-xs text-soft">
-                {t("Saldo agent:")} {balanceEth === null ? "—" : `${fmtEth(balanceEth)} ETH`}
+                {t("Saldo agent:")} {balanceEth === null ? "—" : `${fmtEth(balanceEth)} ${NATIVE}`}
               </span>
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-soft">{t("Max per pool (ETH)")}</span>
+              <span className="text-soft">Max per pool ({NATIVE})</span>
               <input
                 name="maxPerPoolEth"
                 type="number"

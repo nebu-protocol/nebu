@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { GeneratedAvatar } from "@/components/generated-avatar";
-import { BnbIcon } from "@/components/icons";
+import { ChainIcon } from "@/components/icons";
+import { ACTIVE_CHAIN } from "@/lib/chain";
 import { useT } from "@/lib/i18n-client";
 import { signOutAction } from "@/server/wallet-actions";
 
@@ -98,8 +99,8 @@ export function WalletButton() {
               <div className="min-w-0">
                 <div className="truncate font-mono text-base font-semibold">{short(addr)}</div>
                 <div className="flex items-center gap-1.5 text-xs text-soft">
-                  <BnbIcon size={14} />
-                  BNB Smart Chain
+                  <ChainIcon size={14} />
+                  {ACTIVE_CHAIN.name}
                 </div>
               </div>
             </div>

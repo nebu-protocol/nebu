@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { TokenIcon } from "@/components/token-icon";
+import { NATIVE } from "@/lib/chain";
 import { useT } from "@/lib/i18n-client";
 import type { Activity } from "@/lib/lpdata";
 
@@ -60,7 +61,7 @@ function FlowIcons({
   dir: "in" | "out" | "close";
 }) {
   const t = useT();
-  const eth = <TokenIcon symbol="ETH" size={18} />;
+  const eth = <TokenIcon symbol={NATIVE} size={18} />;
   // Token icon: hover → nama token, klik → halaman token di block explorer.
   const tok = <TokenIcon symbol={tokenSym ?? "?"} address={tokenAddr} size={18} link />;
   const arrow = <span className={dir === "in" ? "text-emerald-600" : "text-red-500"}>→</span>;

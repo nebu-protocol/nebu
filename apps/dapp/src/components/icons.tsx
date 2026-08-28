@@ -1,10 +1,18 @@
 import type { SVGProps } from "react";
 
 import { curatedLogoFor } from "@/components/company-logos";
+import { ACTIVE_CHAIN } from "@/lib/chain";
 import { TREND_COLOR, type Trend } from "@/lib/format";
 import { markFor } from "@/lib/identity";
 
 type IconProps = Readonly<SVGProps<SVGSVGElement> & { size?: number }>;
+
+/** Ikon chain AKTIF (dinamis): BnbIcon di BSC, logo Robinhood di Robinhood Chain. */
+export function ChainIcon({ size = 18 }: { size?: number }) {
+  if (ACTIVE_CHAIN.kind === "bsc") return <BnbIcon size={size} />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/robinhood-chain.png" alt="" width={size} height={size} className="rounded-full" />;
+}
 
 /** Logo BNB Chain: koin emas Binance + mark resmi (2 chevron + 3 berlian). Vektor, tanpa aset biner. */
 export function BnbIcon({ size = 18, ...props }: IconProps) {

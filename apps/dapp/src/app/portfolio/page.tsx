@@ -209,7 +209,7 @@ async function ManagedView({ address }: { address: string }) {
       <div>
         <h3 className="mb-1 text-sm font-medium">{t("Your positions")}</h3>
         <p className="mb-2 text-xs text-soft">
-          On-chain nyata · Net vs HODL = nilai posisi sekarang vs ETH awal.
+          {t("On-chain nyata · Net vs HODL = nilai posisi sekarang vs modal awal.")}
         </p>
         <div className="overflow-x-auto rounded-xl border border-line/60">
           <table className="w-full min-w-[440px] whitespace-nowrap text-sm">

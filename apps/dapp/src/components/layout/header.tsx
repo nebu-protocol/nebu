@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { BnbIcon } from "@/components/icons";
+import { ChainIcon } from "@/components/icons";
+import { ACTIVE_CHAIN } from "@/lib/chain";
 import { LanguageToggle } from "./language-toggle";
 import { MobileNav, NavLinks } from "./nav-links";
 import { WalletButton } from "./wallet-button";
@@ -20,10 +21,10 @@ export function Header() {
         <div className="flex items-center gap-2">
           <LanguageToggle />
           <span
-            title="BNB Smart Chain"
+            title={ACTIVE_CHAIN.name}
             className="hidden h-8 w-8 items-center justify-center rounded-lg border border-line/60 sm:flex"
           >
-            <BnbIcon size={18} />
+            <ChainIcon size={18} />
           </span>
           <WalletButton />
           <MobileNav />

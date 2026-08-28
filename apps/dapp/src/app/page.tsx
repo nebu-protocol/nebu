@@ -5,6 +5,7 @@ import { MiniLine } from "@/components/mini-line";
 import { Sparkline } from "@/components/sparkline";
 import { TokenIcon } from "@/components/token-icon";
 import { WelcomeCard } from "@/components/welcome-card";
+import { NATIVE } from "@/lib/chain";
 import { getT } from "@/lib/i18n-server";
 import { getPoolsTable } from "@/lib/lpdata";
 
@@ -47,7 +48,7 @@ export default async function Page() {
                     <TokenIcon symbol={p.sym1} address={p.address} size={32} link />
                     <div className="min-w-0">
                       <div className="truncate font-medium">{p.sym1}</div>
-                      <div className="text-xs text-soft">/ ETH</div>
+                      <div className="text-xs text-soft">/ {NATIVE}</div>
                     </div>
                   </div>
                   <div className="mt-3 flex items-baseline gap-1.5">
@@ -75,8 +76,8 @@ export default async function Page() {
                   <th className="px-4 py-3 text-left font-medium">{t("Pool")}</th>
                   <th className="px-4 py-3 text-right font-medium">{t("APR ±20%")}</th>
                   <th className="hidden px-4 py-3 text-right font-medium sm:table-cell">{t("Δ recent")}</th>
-                  <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">Fee/ETH/d</th>
-                  <th className="hidden px-4 py-3 text-right font-medium md:table-cell">Vol (ETH)</th>
+                  <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">Fee/{NATIVE}/d</th>
+                  <th className="hidden px-4 py-3 text-right font-medium md:table-cell">Vol ({NATIVE})</th>
                   <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">{t("Swaps/h")}</th>
                   <th className="hidden px-4 py-3 text-right font-medium md:table-cell">{t("Trend")}</th>
                 </tr>
