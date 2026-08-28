@@ -3,8 +3,9 @@
 x-build: &lp-build
   context: .
   args:
-    NEXT_PUBLIC_LP_VAULT_FACTORY: ${NEXT_PUBLIC_LP_VAULT_FACTORY}
-    NEXT_PUBLIC_CHAIN: ${NEXT_PUBLIC_CHAIN}
+    # Default BNB-native walau env Coolify belum di-set.
+    NEXT_PUBLIC_LP_VAULT_FACTORY: ${NEXT_PUBLIC_LP_VAULT_FACTORY:-0xA94218Dbdb142A10e32eF7b494105D27F47f7045}
+    NEXT_PUBLIC_CHAIN: ${NEXT_PUBLIC_CHAIN:-bsc}
 
 x-env: &lp-env
   NODE_ENV: production
@@ -33,7 +34,10 @@ services:
     working_dir: /app/apps/dapp
     command: ["node_modules/.bin/next", "start", "-p", "3016"]
     restart: unless-stopped
-    environment: *lp-env
+    # Dapp publik BACA data BNB (lp-bsc.db) — bukan lp.db (Robinhood, ditulis collector).
+    environment:
+      <<: *lp-env
+      LPBOT_DB_PATH: /app/data/lp-bsc.db
     volumes:
       - /home/cuyvps/lp-auto/data:/app/data
     ports:
