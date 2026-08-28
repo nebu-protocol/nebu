@@ -4,3 +4,8 @@ node_modules
 .git
 .env
 *.log
+# JANGAN kirim SQLite (574MB) ke build context — di-mount sebagai volume saat runtime
+data
+**/*.db
+**/*.db-shm
+**/*.db-wal
