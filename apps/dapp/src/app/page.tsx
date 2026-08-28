@@ -18,6 +18,9 @@ const fmtUsd = (n: number | null) =>
 // Persen: separator ribuan + maks 2 desimal.
 const fmtPct = (n: number, dp = 2) =>
   n.toLocaleString(undefined, { maximumFractionDigits: dp });
+// APR bisa astronomis di pool fee-tinggi (mis. four.meme ~95% fee → feeGrowth ekstrem) —
+// cap tampilan biar kredibel: di atas 9.999% ditampilkan "9,999%+".
+const fmtApr = (n: number) => (n >= 9999 ? "9,999%+" : `${fmtPct(n, 0)}%`);
 const chg = (n: number | null) =>
   n === null ? <span className="text-soft">—</span> : (
     <span className={n >= 0 ? "text-emerald-600" : "text-red-600"}>
@@ -56,7 +59,7 @@ export default async function Page() {
                     </div>
                   </div>
                   <div className="mt-3 flex items-baseline gap-1.5">
-                    <span className="text-2xl font-semibold tracking-tight">{fmtPct(p.apr20, 0)}%</span>
+                    <span className="text-2xl font-semibold tracking-tight">{fmtApr(p.apr20)}</span>
                     <span className="text-xs text-soft">{t("APR")}</span>
                   </div>
                   <div className="text-xs">{chg(p.changePct)}</div>
@@ -101,10 +104,10 @@ export default async function Page() {
                       <div className="flex items-center gap-2">
                         <TokenIcon symbol={p.sym1} address={p.address} size={28} link />
                         <span className="font-medium">{p.sym1}</span>
-                        <span className="text-xs text-soft">/ {p.sym0}</span>
+                        <span className="text-xs text-soft">/ {NATIVE}</span>
                       </div>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right font-medium">{fmtPct(p.apr20, 0)}%</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-medium">{fmtApr(p.apr20)}</td>
                     <td className="hidden whitespace-nowrap px-4 py-3 text-right sm:table-cell">{chg(p.changePct)}</td>
                     <td className="hidden px-4 py-3 text-right lg:table-cell">{p.feePerEthDay.toFixed(5)}</td>
                     <td className="hidden px-4 py-3 text-right md:table-cell">{p.volEth?.toFixed(1) ?? "—"}</td>
