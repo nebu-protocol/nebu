@@ -56,7 +56,7 @@ export const AGENTS: AgentMeta[] = [
     name: "Nebu Yield",
     tagline: "Routes idle capital to the best-yielding BNB venue and compounds it",
     category: "yield",
-    status: "beta",
+    status: "live",
     emoji: "🌾",
     image: "/agents/nebu-yield.png",
     description:
@@ -69,7 +69,7 @@ export const AGENTS: AgentMeta[] = [
     name: "Nebu Grid",
     tagline: "Automated buy-low / sell-high across a price grid",
     category: "grid",
-    status: "soon",
+    status: "live",
     emoji: "🔲",
     image: "/agents/nebu-grid.png",
     description:
@@ -82,7 +82,7 @@ export const AGENTS: AgentMeta[] = [
     name: "Nebu Guardian",
     tagline: "Watches your Venus loans and acts before liquidation",
     category: "health",
-    status: "soon",
+    status: "live",
     emoji: "🛡️",
     image: "/agents/nebu-guardian.png",
     description:

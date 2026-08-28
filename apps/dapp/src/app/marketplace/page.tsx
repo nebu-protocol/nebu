@@ -12,15 +12,35 @@ import { getEstApr, getLeaderboard, getPoolsTable, getTopPools } from "@/lib/lpd
 export const metadata: Metadata = { title: "Agent Marketplace" };
 export const dynamic = "force-dynamic";
 
-function metricsFor(agent: AgentMeta, live: { apr: number | null; net: number | null; pools: number }): CardMetric[] {
-  if (agent.perfSource === "lp") {
-    return [
-      { label: "Est. APR", value: live.apr != null ? `${live.apr.toFixed(1)}%` : "—", good: true },
-      { label: "Net vs HODL", value: live.net != null ? `${live.net >= 0 ? "+" : ""}${live.net.toFixed(2)}%` : "—", good: (live.net ?? 0) >= 0 },
-      { label: "Active pools", value: String(live.pools) },
-    ];
+type Live = { apr: number | null; net: number | null; pools: number; bestApr: number | null };
+
+// Metrik per-kategori dari data pool BNB real — semua agent tampil angka, bukan "coming soon".
+function metricsFor(agent: AgentMeta, live: Live): CardMetric[] {
+  const pct = (n: number | null) => (n != null ? `${n.toFixed(1)}%` : "—");
+  switch (agent.category) {
+    case "rebalancing":
+      return [
+        { label: "Est. APR", value: pct(live.apr), good: true },
+        { label: "Net vs HODL", value: live.net != null ? `${live.net >= 0 ? "+" : ""}${live.net.toFixed(2)}%` : "—", good: (live.net ?? 0) >= 0 },
+        { label: "Pools", value: String(live.pools) },
+      ];
+    case "yield":
+      return [
+        { label: "Best APR", value: pct(live.bestApr), good: true },
+        { label: "Auto-compound", value: "Daily" },
+        { label: "Venues", value: String(live.pools) },
+      ];
+    case "grid":
+      return [
+        { label: "Markets", value: String(live.pools) },
+        { label: "Strategy", value: "Buy-low / sell-high" },
+      ];
+    case "health":
+      return [
+        { label: "Protects", value: "Venus loans" },
+        { label: "Watch", value: "24/7" },
+      ];
   }
-  return [{ label: "Track record", value: agent.status === "beta" ? "Building — onchain soon" : "Coming soon" }];
 }
 
 export default async function MarketplacePage() {
@@ -30,7 +50,9 @@ export default async function MarketplacePage() {
   const board = getLeaderboard();
   const net = board.length ? board.reduce((s, r) => s + r.avgNet, 0) / board.length : null;
   const pools = getPoolsTable(30);
-  const live = { apr, net, pools: getTopPools(30).length };
+  const top = getTopPools(30);
+  const bestApr = top.length ? Math.max(...top.map((p) => p.apr20)) : null;
+  const live: Live = { apr, net, pools: top.length, bestApr };
   const items: AgentItem[] = AGENTS.map((a) => ({ agent: a, metrics: metricsFor(a, live) }));
 
   return (

@@ -41,21 +41,26 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
   if (!agent) notFound();
   const t = await getT();
 
-  const isLive = agent.perfSource === "lp";
+  const isLive = agent.status === "live";
   const authed = !!(await getSiweAddress());
   const active = isLive ? await getActiveHire(agent.id) : null;
 
-  const apr = isLive ? getEstApr(3) : null;
-  const board = isLive ? getLeaderboard() : [];
+  const apr = getEstApr(3);
+  const board = getLeaderboard();
   const net = board.length ? board.reduce((s, r) => s + r.avgNet, 0) / board.length : null;
-  const pools = isLive ? getTopPools(30).length : 0;
+  const top = getTopPools(30);
+  const pools = top.length;
+  const bestApr = top.length ? Math.max(...top.map((p) => p.apr20)) : null;
+  const pct = (n: number | null) => (n != null ? `${n.toFixed(1)}%` : "—");
+  const netStr = net != null ? `${net >= 0 ? "+" : ""}${net.toFixed(2)}%` : "—";
 
-  const stats: [string, string][] = [
-    ["Est. fee APR", isLive && apr != null ? `${apr.toFixed(1)}%` : "—"],
-    ["Net vs HODL", net != null ? `${net >= 0 ? "+" : ""}${net.toFixed(2)}%` : "—"],
-    ["Active pools", isLive ? String(pools) : "—"],
-    ["Chain", "BNB Smart Chain"],
-  ];
+  const STATS: Record<AgentCategory, [string, string][]> = {
+    rebalancing: [["Est. fee APR", pct(apr)], ["Net vs HODL", netStr], ["Active pools", String(pools)], ["Chain", "BNB Smart Chain"]],
+    yield: [["Best APR", pct(bestApr)], ["Auto-compound", "Daily"], ["Venues", String(pools)], ["Chain", "BNB Smart Chain"]],
+    grid: [["Markets", String(pools)], ["Strategy", "Buy-low / sell-high"], ["Rebalance", "Auto"], ["Chain", "BNB Smart Chain"]],
+    health: [["Protects", "Venus loans"], ["Trigger", "Below your HF"], ["Watch", "24/7"], ["Chain", "BNB Smart Chain"]],
+  };
+  const stats = STATS[agent.category];
   const details: [string, string][] = [
     ["Agent ID", agent.id],
     ["Category", CAT_LABEL[agent.category]],
