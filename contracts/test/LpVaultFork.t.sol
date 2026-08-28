@@ -126,6 +126,37 @@ contract LpVaultForkTest is Test {
         assertGe(IERC20(TOKEN1).balanceOf(address(vault)), tok1BeforeBurn, "burn returns token1 to vault");
     }
 
+    /// Swap on a real HOOKED, dynamic-fee pool (BNB/CAKE, ~493 BNB liq) — proves the agent
+    /// can trade BSC's legit liquid pools (not just no-hook four.meme). Needs BSC_RPC_URL.
+    function test_fork_hooked_pool_swap() public {
+        string memory rpc = vm.envOr("BSC_RPC_URL", string(""));
+        if (bytes(rpc).length == 0) {
+            vm.skip(true);
+            return;
+        }
+        vm.createSelectFork(rpc);
+        LpVaultFactory factory = new LpVaultFactory(CL_POSITION_MANAGER, UNIVERSAL_ROUTER, PERMIT2);
+        vm.prank(owner);
+        LpVault vault = LpVault(payable(factory.createVault(agent, 1 ether)));
+        vm.deal(address(vault), 1 ether);
+
+        address CAKE = 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82;
+        PoolKey memory key = PoolKey({
+            currency0: address(0),
+            currency1: CAKE,
+            hooks: 0x32C59D556B16DB81DFc32525eFb3CB257f7e493d, // dynamic-fee hook
+            poolManager: CL_POOL_MANAGER,
+            fee: 8388608, // 0x800000 = dynamic fee flag
+            parameters: 0x00000000000000000000000000000000000000000000000000000000000a00c2
+        });
+
+        vm.prank(agent);
+        vault.swap(key, true, 0.01 ether, 0); // buy CAKE with 0.01 BNB, recipient forced = vault
+
+        assertGt(IERC20(CAKE).balanceOf(address(vault)), 0, "hooked-pool swap output must land in vault");
+        assertLt(address(vault).balance, 1 ether, "vault BNB spent");
+    }
+
     function _mintedTokenId(address to) internal returns (uint256) {
         VmSafe.Log[] memory logs = vm.getRecordedLogs();
         for (uint256 i = 0; i < logs.length; i++) {
