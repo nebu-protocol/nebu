@@ -34,26 +34,13 @@ echo "==> pm2 reload"
 pm2 startOrReload ecosystem.config.cjs
 pm2 save
 
-echo "==> nginx vhost + SSL untuk nebu.ifajar.dev (idempotent)"
-if command -v nginx >/dev/null 2>&1; then
-  SUDO=""; [ "$(id -u)" -ne 0 ] && SUDO="sudo -n"
-  if [ ! -e /etc/nginx/sites-enabled/nebu.ifajar.dev ]; then
-    $SUDO cp deploy/nginx-nebu.ifajar.dev.conf /etc/nginx/sites-available/nebu.ifajar.dev 2>/dev/null \
-      && $SUDO ln -sf /etc/nginx/sites-available/nebu.ifajar.dev /etc/nginx/sites-enabled/nebu.ifajar.dev 2>/dev/null \
-      && echo "   vhost nebu.ifajar.dev dipasang" || echo "   (gagal pasang vhost — perlu sudo)"
-  fi
-  if $SUDO nginx -t 2>/dev/null; then
-    $SUDO systemctl reload nginx 2>/dev/null && echo "   nginx reload OK"
-    if command -v certbot >/dev/null 2>&1 && [ ! -d /etc/letsencrypt/live/nebu.ifajar.dev ]; then
-      $SUDO certbot --nginx -d nebu.ifajar.dev --non-interactive --agree-tos \
-        --register-unsafely-without-email --redirect 2>/dev/null \
-        && echo "   SSL nebu.ifajar.dev OK" || echo "   (certbot gagal — jalankan manual: sudo certbot --nginx -d nebu.ifajar.dev)"
-    fi
-  else
-    echo "   (nginx -t / sudo tak tersedia — lewati; jalankan deploy/setup-nginx.sh manual)"
-  fi
+echo "==> nginx vhost nebu.ifajar.dev"
+if [ -e /etc/nginx/sites-enabled/nebu.ifajar.dev ]; then
+  echo "   vhost + SSL sudah terpasang (skip)"
 else
-  echo "   (nginx tak terpasang — lewati)"
+  # Setup sekali (VPS ini: restricted-sudo + cert user-level di ~/le/config, cert auto-renew).
+  echo "   vhost belum ada — bootstrap manual sekali: pasang vhost (sudo tee sites-available/*)"
+  echo "   + issue cert user-level (certbot certonly --config-dir ~/le/config --webroot -w ~/le/webroot -d nebu.ifajar.dev)."
 fi
 
 echo "==> selesai"
