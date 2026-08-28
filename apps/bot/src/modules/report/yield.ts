@@ -6,10 +6,10 @@ const YEAR_S = 31_536_000
 const NATIVE_SYM = ACTIVE_CHAIN.nativeCurrency.symbol
 
 // Guard anti-noise: annualisasi dari span pendek / pool sepi menghasilkan APR sampah.
-// ponytail: konstanta dulu; jadikan argumen kalau mulai sering di-tweak.
-const MIN_SPAN_MIN = 45
-const MIN_VOL24_ETH = 5
-const MIN_SWAPS_PER_H = 10
+// Env-tunable: demo di RPC publik (discovery/vol terbatas) bisa longgarkan; prod pakai default.
+const MIN_SPAN_MIN = Number(process.env.YIELD_MIN_SPAN_MIN ?? 45)
+const MIN_VOL24_ETH = Number(process.env.YIELD_MIN_VOL_ETH ?? 5)
+const MIN_SWAPS_PER_H = Number(process.env.YIELD_MIN_SWAPS_PER_H ?? 10)
 const Q128 = Math.pow(2, 128)
 const Q96 = Math.pow(2, 96)
 
