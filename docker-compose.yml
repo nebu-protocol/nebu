@@ -1,6 +1,15 @@
-# Deploy via Coolify. Nilai env diisi lewat Coolify (interpolasi ${...}).
+# Deploy via Coolify. State SQLite di-mount dari host (data/lp.db 574MB, ditulis collector).
+# Hanya collector yang menulis DB -> single writer, aman.
+x-build: &lp-build
+  context: .
+  args:
+    NEXT_PUBLIC_LP_VAULT_FACTORY: ${NEXT_PUBLIC_LP_VAULT_FACTORY}
+    NEXT_PUBLIC_CHAIN: ${NEXT_PUBLIC_CHAIN}
+
 x-env: &lp-env
   NODE_ENV: production
+  LPBOT_DB_PATH: /app/data/lp.db
+  DB_PATH: /app/data/lp.db
   LPBOT_KEY_SECRET: ${LPBOT_KEY_SECRET}
   SESSION_SECRET: ${SESSION_SECRET}
   TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY}
@@ -10,24 +19,30 @@ x-env: &lp-env
 
 services:
   web:
-    build: .
+    build: *lp-build
     working_dir: /app/apps/backoffice
     command: ["node_modules/.bin/next", "start", "-p", "3015"]
     restart: unless-stopped
     environment: *lp-env
+    volumes:
+      - /home/cuyvps/lp-auto/data:/app/data
     ports:
       - "127.0.0.1:3015:3015"
   dapp:
-    build: .
+    build: *lp-build
     working_dir: /app/apps/dapp
     command: ["node_modules/.bin/next", "start", "-p", "3016"]
     restart: unless-stopped
     environment: *lp-env
+    volumes:
+      - /home/cuyvps/lp-auto/data:/app/data
     ports:
       - "127.0.0.1:3016:3016"
   collector:
-    build: .
+    build: *lp-build
     working_dir: /app/apps/bot
     command: ["/app/node_modules/.bin/tsx", "src/index.ts", "collect", "60"]
     restart: unless-stopped
     environment: *lp-env
+    volumes:
+      - /home/cuyvps/lp-auto/data:/app/data
