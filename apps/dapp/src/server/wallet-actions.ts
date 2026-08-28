@@ -240,7 +240,14 @@ export async function getOwnedWallet(): Promise<OwnedWallet> {
          FROM wallets WHERE lower(owner) = ?`,
       )
       .get(owner) as OwnedWallet;
-    return w ? { ...w } : null;
+    if (!w) return null;
+    // Guard: token_holdings_eth sesekali KORUP — valuasi ERC20 lepas dgn decimals/harga
+    // rusak bisa baca nilai raksasa (mis. 1.2e11 ETH → Total value $ kuadriliun). Di luar
+    // batas wajar (100× setoran, atau 1000 ETH absolut) → nol-kan biar total tak meledak.
+    const th = w.token_holdings_eth;
+    const cap = Math.max((w.deposited_eth || 0) * 100, 1000);
+    w.token_holdings_eth = th != null && Number.isFinite(th) && th >= 0 && th <= cap ? th : 0;
+    return { ...w };
   });
 }
 
