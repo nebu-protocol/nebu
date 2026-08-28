@@ -12,7 +12,7 @@ import { PreferencesStoreProvider } from "@/stores/preferences/preferences-provi
 
 import "./globals.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bo-lp.ifajar.dev";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://bo-nebu.ifajar.dev";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

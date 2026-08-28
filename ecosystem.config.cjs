@@ -7,7 +7,7 @@ const DB = path.join(REPO, "data", "lp.db");
 module.exports = {
   apps: [
     {
-      name: "lp-web", // backoffice (CRUD/manage) -> bo-lp.ifajar.dev
+      name: "lp-web", // backoffice (CRUD/manage) -> bo-nebu.ifajar.dev
       script: "deploy/run-web.sh",
       interpreter: "bash",
       cwd: REPO,
@@ -16,7 +16,7 @@ module.exports = {
       max_restarts: 10,
     },
     {
-      name: "lp-dapp", // dapp publik (LP) -> lp.ifajar.dev
+      name: "lp-dapp", // dapp publik (LP) -> nebu.ifajar.dev
       script: "deploy/run-dapp.sh",
       interpreter: "bash",
       cwd: REPO,
