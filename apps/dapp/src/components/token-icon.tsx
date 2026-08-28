@@ -20,7 +20,11 @@ function hash(s: string): number {
  * pernah ada gambar rusak/blank — kalau semua gagal, avatar dasar yang tampil.
  */
 import { BnbIcon } from "@/components/icons";
-import { EXPLORER_URL as EXPLORER } from "@/lib/chain";
+import { ACTIVE_CHAIN, EXPLORER_URL as EXPLORER } from "@/lib/chain";
+
+// Klik token → halaman token PancakeSwap (di BSC); fallback block explorer di chain lain.
+const tokenUrl = (addr: string) =>
+  ACTIVE_CHAIN.kind === "bsc" ? `https://pancakeswap.finance/token/bsc/${addr}` : `${EXPLORER}/token/${addr}`;
 
 export function TokenIcon({
   symbol,
@@ -80,7 +84,7 @@ export function TokenIcon({
   if (addr) {
     return (
       <a
-        href={`${EXPLORER}/token/${addr}`}
+        href={tokenUrl(addr)}
         target="_blank"
         rel="noopener noreferrer"
         title={symbol}
