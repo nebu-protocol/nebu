@@ -23,6 +23,7 @@ import {
 contract LpVault {
     // --- protocol (immutable, set on implementation, shared by clones) ---
     address public immutable CL_POSITION_MANAGER;
+    address public immutable CL_POOL_MANAGER; // canonical Infinity CLPoolManager — poolKey MUST use it
     address public immutable UNIVERSAL_ROUTER;
     address public immutable PERMIT2;
 
@@ -77,11 +78,14 @@ contract LpVault {
         _lock = 1;
     }
 
-    constructor(address clPositionManager, address universalRouter, address permit2) {
+    constructor(address clPositionManager, address clPoolManager, address universalRouter, address permit2) {
         require(
-            clPositionManager != address(0) && universalRouter != address(0) && permit2 != address(0), "zero addr"
+            clPositionManager != address(0) && clPoolManager != address(0) && universalRouter != address(0)
+                && permit2 != address(0),
+            "zero addr"
         );
         CL_POSITION_MANAGER = clPositionManager;
+        CL_POOL_MANAGER = clPoolManager;
         UNIVERSAL_ROUTER = universalRouter;
         PERMIT2 = permit2;
         _initialized = true; // lock the implementation itself against initialize()
@@ -145,6 +149,9 @@ contract LpVault {
         onlyAgentOrOwner
         nonReentrant
     {
+        // Pin the pool manager: a compromised agent cannot route the vault's approved balance
+        // through an attacker-controlled "poolManager" contract. All real Infinity pools use this.
+        require(key.poolManager == CL_POOL_MANAGER, "poolManager");
         address currencyIn = zeroForOne ? key.currency0 : key.currency1;
         address currencyOut = zeroForOne ? key.currency1 : key.currency0;
         uint256 value = 0; // 0 for token-in ops (native value only when currency0 = native)
@@ -186,6 +193,7 @@ contract LpVault {
         uint128 amount0Max,
         uint128 amount1Max
     ) external onlyAgentOrOwner nonReentrant {
+        require(key.poolManager == CL_POOL_MANAGER, "poolManager"); // pin canonical manager (see swap)
         bool nativeIn = key.currency0 == NATIVE;
         uint256 value = 0; // 0 for token-in ops (native value only when currency0 = native)
         if (nativeIn) {

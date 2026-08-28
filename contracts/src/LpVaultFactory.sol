@@ -12,8 +12,8 @@ contract LpVaultFactory {
 
     event VaultCreated(address indexed owner, address indexed vault, address agent);
 
-    constructor(address clPositionManager, address universalRouter, address permit2) {
-        implementation = address(new LpVault(clPositionManager, universalRouter, permit2));
+    constructor(address clPositionManager, address clPoolManager, address universalRouter, address permit2) {
+        implementation = address(new LpVault(clPositionManager, clPoolManager, universalRouter, permit2));
     }
 
     /// @notice Deploy the caller's vault. One per owner. `agent` runs the strategy (revocable).

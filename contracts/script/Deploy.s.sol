@@ -11,12 +11,14 @@ contract Deploy is Script {
     function run() external {
         address clPositionManager =
             vm.envOr("CL_POSITION_MANAGER", address(0x55f4c8abA71A1e923edC303eb4fEfF14608cC226));
+        address clPoolManager =
+            vm.envOr("CL_POOL_MANAGER", address(0xa0FfB9c1CE1Fe56963B0321B32E7A0302114058b));
         address universalRouter =
             vm.envOr("UNIVERSAL_ROUTER", address(0xd9C500DfF816a1Da21A48A732d3498Bf09dc9AEB));
         address permit2 = vm.envOr("PERMIT2", address(0x000000000022D473030F116dDEE9F6B43aC78BA3));
 
         vm.startBroadcast();
-        LpVaultFactory factory = new LpVaultFactory(clPositionManager, universalRouter, permit2);
+        LpVaultFactory factory = new LpVaultFactory(clPositionManager, clPoolManager, universalRouter, permit2);
         vm.stopBroadcast();
 
         console.log("LpVaultFactory:", address(factory));

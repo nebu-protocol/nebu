@@ -50,7 +50,7 @@ contract LpVaultForkTest is Test {
         }
         vm.createSelectFork(rpc);
 
-        LpVaultFactory factory = new LpVaultFactory(CL_POSITION_MANAGER, UNIVERSAL_ROUTER, PERMIT2);
+        LpVaultFactory factory = new LpVaultFactory(CL_POSITION_MANAGER, CL_POOL_MANAGER, UNIVERSAL_ROUTER, PERMIT2);
         vm.prank(owner);
         LpVault vault = LpVault(payable(factory.createVault(agent, 1 ether)));
         vm.deal(address(vault), 1 ether); // fund vault with BNB
@@ -85,7 +85,7 @@ contract LpVaultForkTest is Test {
             return;
         }
         vm.createSelectFork(rpc);
-        LpVaultFactory factory = new LpVaultFactory(CL_POSITION_MANAGER, UNIVERSAL_ROUTER, PERMIT2);
+        LpVaultFactory factory = new LpVaultFactory(CL_POSITION_MANAGER, CL_POOL_MANAGER, UNIVERSAL_ROUTER, PERMIT2);
         vm.prank(owner);
         LpVault vault = LpVault(payable(factory.createVault(agent, 5 ether)));
         vm.deal(address(vault), 5 ether);

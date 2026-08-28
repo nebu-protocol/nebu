@@ -52,7 +52,7 @@ pnl → positions-live → exit-manager
 | Safety | `nonReentrant`, CEI, per‑op notional cap, `_safeCall` for non‑standard ERC‑20s |
 | Deploy | `LpVaultFactory` mints EIP‑1167 minimal‑proxy clones (one vault per owner) |
 
-**Deployed (BSC mainnet):** `LpVaultFactory` at [`0x9dAf66b75d348D4f90B125a282bBFA608Ecec13C`](https://bscscan.com/address/0x9dAf66b75d348D4f90B125a282bBFA608Ecec13C) · also on BSC testnet.
+**Deployed (BSC mainnet):** `LpVaultFactory` at [`0xA94218Dbdb142A10e32eF7b494105D27F47f7045`](https://bscscan.com/address/0xA94218Dbdb142A10e32eF7b494105D27F47f7045) · also on BSC testnet.
 
 Audited with **Slither** (two real bugs found + fixed: a clone reentrancy‑lock init bug, and non‑standard‑token approve/transfer). **19 Foundry tests** (17 unit + 2 mainnet‑fork, incl. a vault swap on a real hooked BNB/CAKE pool).
 

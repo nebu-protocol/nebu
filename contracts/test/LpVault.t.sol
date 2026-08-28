@@ -120,7 +120,8 @@ contract LpVaultTest is Test {
         pm = new MockPositionManager();
         permit2 = new MockPermit2();
         token = new MockERC20();
-        factory = new LpVaultFactory(address(pm), address(router), address(permit2));
+        // clPoolManager pinned = address(0x123) → matches the test PoolKey below (guard passes).
+        factory = new LpVaultFactory(address(pm), address(0x123), address(router), address(permit2));
         vm.prank(owner);
         vault = LpVault(payable(factory.createVault(agent, 1 ether)));
         key = PoolKey({
@@ -186,6 +187,23 @@ contract LpVaultTest is Test {
         vm.prank(agent);
         vault.swap(key, true, 0.1 ether, 0);
         assertEq(router.lastValue(), 0.1 ether); // native forwarded to router
+    }
+
+    // Pin: a poolKey with a non-canonical poolManager (attacker-controlled routing) MUST revert.
+    function test_swap_and_mint_reject_non_canonical_poolManager() public {
+        PoolKey memory bad = key;
+        bad.poolManager = address(0xBAD);
+        vm.prank(agent);
+        vm.expectRevert(bytes("poolManager"));
+        vault.swap(bad, true, 0.1 ether, 0);
+
+        vm.prank(agent);
+        vm.expectRevert(bytes("poolManager"));
+        vault.mint(bad, -100, 100, 1000, 0.1 ether, 0);
+
+        // canonical manager (0x123) still works
+        vm.prank(agent);
+        vault.swap(key, true, 0.1 ether, 0);
     }
 
     function test_setAgent_zero_disables_automation() public {
