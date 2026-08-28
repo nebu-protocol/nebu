@@ -1,15 +1,16 @@
+import { ACTIVE_CHAIN } from '../../config/index.ts'
 import { openDb, setMeta } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
 
 /**
- * Harga ETH/USD dari beberapa price feed publik dengan fallback berurutan,
- * disimpan ke meta (eth_usd) tiap siklus. Backoffice cukup baca meta — tidak
- * memukul API eksternal per-render (hindari rate limit). Fallback terakhir:
- * pool ETH/USDG on-chain.
+ * Harga NATIVE/USD (ETH di Robinhood, BNB di BSC) dari beberapa price feed publik dengan
+ * fallback berurutan, disimpan ke meta (key `eth_usd` — nama lama, artinya "native/USD";
+ * dibaca dapp). Sumber dipilih dari simbol native chain aktif. Fallback terakhir: pool
+ * native/USDG on-chain (khusus Robinhood).
  */
 type Source = { name: string; url: string; pick: (j: unknown) => number }
 
-const SOURCES: Source[] = [
+const ETH_SOURCES: Source[] = [
   {
     name: 'coinbase',
     url: 'https://api.coinbase.com/v2/prices/ETH-USD/spot',
@@ -34,6 +35,28 @@ const SOURCES: Source[] = [
     pick: (j) => Number((j as { ethereum: { usd: number } }).ethereum.usd),
   },
 ]
+
+const BNB_SOURCES: Source[] = [
+  {
+    name: 'binance',
+    url: 'https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT',
+    pick: (j) => Number((j as { price: string }).price),
+  },
+  {
+    name: 'coingecko',
+    url: 'https://api.coingecko.com/api/v3/simple/price?ids=binancecoin&vs_currencies=usd',
+    pick: (j) => Number((j as { binancecoin: { usd: number } }).binancecoin.usd),
+  },
+  {
+    name: 'coinbase',
+    url: 'https://api.coinbase.com/v2/prices/BNB-USD/spot',
+    pick: (j) => Number((j as { data: { amount: string } }).data.amount),
+  },
+]
+
+// Native = BNB (BSC/BSC-testnet) → sumber BNB; selain itu ETH (Robinhood).
+const NATIVE_SYMBOL = ACTIVE_CHAIN.nativeCurrency.symbol
+const SOURCES: Source[] = NATIVE_SYMBOL.includes('BNB') ? BNB_SOURCES : ETH_SOURCES
 
 async function fromApis(): Promise<{ price: number; source: string } | null> {
   for (const s of SOURCES) {
@@ -77,11 +100,11 @@ export async function run() {
     source = 'onchain-usdg'
   }
   if (price === null) {
-    log('gagal dapat harga ETH/USD dari semua sumber')
+    log(`gagal dapat harga ${NATIVE_SYMBOL}/USD dari semua sumber`)
     return
   }
   setMeta(db, 'eth_usd', String(price))
   setMeta(db, 'eth_usd_source', source)
   setMeta(db, 'eth_usd_ts', String(Math.floor(Date.now() / 1000)))
-  log(`ETH/USD = ${price.toFixed(2)} (${source})`)
+  log(`${NATIVE_SYMBOL}/USD = ${price.toFixed(2)} (${source})`)
 }
