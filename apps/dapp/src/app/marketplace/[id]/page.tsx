@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { HirePanel } from "@/components/hire-panel";
 import { Header } from "@/components/layout/header";
 import { getAgent, STATUS_LABEL } from "@/lib/agents";
 import { getT } from "@/lib/i18n-server";
 import { getEstApr, getLeaderboard, getTopPools } from "@/lib/lpdata";
+import { getActiveHire } from "@/server/hire-actions";
+import { getSiweAddress } from "@/server/siwe";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +25,8 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
   const t = await getT();
 
   const isLive = agent.perfSource === "lp";
+  const authed = !!(await getSiweAddress());
+  const active = isLive ? await getActiveHire(agent.id) : null;
   const apr = isLive ? getEstApr(3) : null;
   const board = isLive ? getLeaderboard() : [];
   const net = board.length ? board.reduce((s, r) => s + r.avgNet, 0) / board.length : null;
@@ -85,23 +90,17 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
           </ul>
         </div>
 
-        <div className="mt-8 flex items-center gap-3">
+        <div className="mt-8">
           {isLive ? (
-            <Link
-              href="/portfolio"
-              className="rounded-xl bg-ink px-5 py-2.5 text-sm font-medium text-white hover:opacity-90"
-            >
-              {t("Hire this agent")}
-            </Link>
+            <HirePanel agentId={agent.id} authed={authed} active={active} />
           ) : (
-            <button
-              disabled
-              className="cursor-not-allowed rounded-xl bg-shade px-5 py-2.5 text-sm font-medium text-faint"
-            >
-              {agent.status === "beta" ? t("In beta — join waitlist") : t("Coming soon")}
-            </button>
+            <div className="rounded-2xl border border-line/60 p-5">
+              <button disabled className="cursor-not-allowed rounded-xl bg-shade px-5 py-2.5 text-sm font-medium text-faint">
+                {agent.status === "beta" ? t("In beta — join waitlist") : t("Coming soon")}
+              </button>
+              <p className="mt-2 text-xs text-faint">{t("This agent is on the way. Live agents can be hired non-custodially, revocable anytime.")}</p>
+            </div>
           )}
-          <span className="text-xs text-faint">{t("Non-custodial · revoke anytime")}</span>
         </div>
       </main>
     </>
