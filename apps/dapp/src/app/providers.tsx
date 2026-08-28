@@ -31,8 +31,8 @@ export function Providers({
       settings={{
         environmentId: DYNAMIC_ENV_ID,
         walletConnectors: [EthereumWalletConnectors],
-        // Jaringan yang didukung: BNB Smart Chain (56, vault + PancakeSwap Infinity) +
-        // Robinhood Chain (4663, legacy). Wallet bisa switch untuk operasi vault.
+        // Nebu = BNB-native. Hanya BNB Smart Chain (56) yang didukung, jadi connect/sign
+        // selalu di BSC — bukan Robinhood/chain lain.
         overrides: {
           evmNetworks: [
             {
@@ -44,16 +44,6 @@ export function Providers({
               nativeCurrency: { decimals: 18, name: "BNB", symbol: "BNB" },
               networkId: 56,
               rpcUrls: ["https://bsc-dataseed.bnbchain.org"],
-            },
-            {
-              blockExplorerUrls: ["https://robinhoodchain.blockscout.com"],
-              chainId: 4663,
-              chainName: "Robinhood Chain",
-              iconUrls: ["https://nebu.ifajar.dev/robinhood-chain.png"],
-              name: "Robinhood Chain",
-              nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
-              networkId: 4663,
-              rpcUrls: ["https://rpc.mainnet.chain.robinhood.com"],
             },
           ],
         },

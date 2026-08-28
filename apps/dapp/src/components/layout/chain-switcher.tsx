@@ -7,11 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import { BnbIcon } from "@/components/icons";
 import { ACTIVE_CHAIN } from "@/lib/chain";
 
-// Jaringan yang didukung (samakan dgn providers evmNetworks). BSC primary.
-const CHAINS = [
-  { id: 56, name: "BNB Smart Chain", kind: "bsc" as const },
-  { id: 4663, name: "Robinhood Chain", kind: "robinhood" as const },
-];
+// Nebu = BNB-only (samakan dgn providers evmNetworks). Klik → pastikan wallet di BSC.
+const CHAINS = [{ id: 56, name: "BNB Smart Chain", kind: "bsc" as const }];
 
 function Mark({ kind, size = 18 }: { kind: "bsc" | "robinhood"; size?: number }) {
   if (kind === "bsc") return <BnbIcon size={size} />;
