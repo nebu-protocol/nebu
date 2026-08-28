@@ -323,7 +323,17 @@ export function getWalletRealPnl(address: string): RealPnl {
     const open = rows.filter((r) => r.status === "OPEN");
     const closed = rows.filter((r) => r.status === "CLOSED");
     const deployedEth = open.reduce((s, r) => s + (r.entry_cost_eth || 0), 0);
-    const valueEth = open.reduce((s, r) => s + (r.cur_value_eth || 0), 0);
+    // Guard: cur_value_eth sesekali KORUP (valuasi token decimals/harga rusak → nilai raksasa,
+    // mis. LP stablecoin → "nilai" 1e11 native). Kalau di luar rentang wajar dari entry,
+    // pakai nilai TURUNAN dari net_pct (metrik yg memang ditampilkan & waras). Cegah total
+    // absurd ($ kuadriliun) yg bikin dashboard tampak rusak.
+    const posValue = (r: { cur_value_eth: number | null; entry_cost_eth: number; net_pct: number }): number => {
+      const cv = r.cur_value_eth;
+      const entry = r.entry_cost_eth || 0;
+      if (cv != null && Number.isFinite(cv) && cv >= 0 && cv <= entry * 10000) return cv;
+      return entry * (1 + (r.net_pct || 0) / 100); // konsisten dgn net_pct yg ditampilkan
+    };
+    const valueEth = open.reduce((s, r) => s + posValue(r), 0);
     const feesEth = open.reduce((s, r) => s + (r.fees_eth || 0), 0);
     const unrealized = valueEth - deployedEth;
     const realized = closed.reduce((s, r) => s + (r.entry_cost_eth || 0) * ((r.net_pct || 0) / 100), 0);

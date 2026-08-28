@@ -1,8 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { ChainIcon } from "@/components/icons";
-import { ACTIVE_CHAIN } from "@/lib/chain";
+import { ChainSwitcher } from "./chain-switcher";
 import { LanguageToggle } from "./language-toggle";
 import { MobileNav, NavLinks } from "./nav-links";
 import { WalletButton } from "./wallet-button";
@@ -20,12 +19,7 @@ export function Header() {
         </div>
         <div className="flex items-center gap-2">
           <LanguageToggle />
-          <span
-            title={ACTIVE_CHAIN.name}
-            className="hidden h-8 w-8 items-center justify-center rounded-lg border border-line/60 sm:flex"
-          >
-            <ChainIcon size={18} />
-          </span>
+          <ChainSwitcher />
           <WalletButton />
           <MobileNav />
         </div>
