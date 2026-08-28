@@ -5,6 +5,7 @@ import "./globals.css";
 import "@aejkatappaja/phantom-ui/ssr.css";
 
 import { Providers } from "./providers";
+import { getLocale } from "../lib/i18n-server";
 
 const fontSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 const fontMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
@@ -31,11 +32,12 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getLocale();
   return (
-    <html lang="en" className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased`}>
+    <html lang={locale} className={`${fontSans.variable} ${fontMono.variable} font-sans antialiased`}>
       <body>
-        <Providers>{children}</Providers>
+        <Providers initialLocale={locale}>{children}</Providers>
       </body>
     </html>
   );

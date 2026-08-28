@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { useT } from "../../lib/i18n-client";
+
 const NAV = [
   { href: "/", label: "Overview" },
   { href: "/portfolio", label: "Portfolio" },
@@ -17,6 +19,7 @@ const isActive = (pathname: string, href: string) =>
 /** Nav desktop dengan highlight halaman aktif (item = ink, lainnya soft). */
 export function NavLinks() {
   const pathname = usePathname();
+  const t = useT();
   return (
     <nav className="hidden gap-4 text-sm sm:flex">
       {NAV.map((n) => (
@@ -25,7 +28,7 @@ export function NavLinks() {
           href={n.href}
           className={isActive(pathname, n.href) ? "font-medium text-ink" : "text-soft hover:text-ink"}
         >
-          {n.label}
+          {t(n.label)}
         </Link>
       ))}
     </nav>
@@ -35,6 +38,7 @@ export function NavLinks() {
 /** Hamburger menu untuk mobile (<sm) — buka panel berisi NAV. Tutup saat klik luar / pilih item. */
 export function MobileNav() {
   const pathname = usePathname();
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -82,7 +86,7 @@ export function MobileNav() {
                 isActive(pathname, n.href) ? "bg-shade font-medium text-ink" : "text-soft hover:bg-shade hover:text-ink"
               }`}
             >
-              {n.label}
+              {t(n.label)}
             </Link>
           ))}
         </div>

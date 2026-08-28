@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { SubmitButton } from "@/components/submit-button";
 import { Toggle } from "@/components/toggle";
+import { useT } from "@/lib/i18n-client";
 import type { OwnedWallet } from "@/server/wallet-actions";
 import {
   armAgentAction,
@@ -54,6 +55,7 @@ export function ManagePanel({
   initialTab?: Tab;
 }) {
   const router = useRouter();
+  const t = useT();
   const { primaryWallet } = useDynamicContext();
   const [tab, setTab] = useState<Tab>(initialTab);
   const [amount, setAmount] = useState("");
@@ -76,9 +78,9 @@ export function ManagePanel({
 
   const deposit = async () => {
     if (!agent || amountEth <= 0) return;
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return setDepMsg("Wallet tidak terhubung.");
+    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return setDepMsg(t("Wallet tidak terhubung."));
     if (primaryWallet.address.toLowerCase() !== owner.toLowerCase())
-      return setDepMsg("Pindah ke wallet yang kamu connect (owner) dulu.");
+      return setDepMsg(t("Pindah ke wallet yang kamu connect (owner) dulu."));
     setDepositing(true);
     setDepMsg(null);
     try {
@@ -95,7 +97,7 @@ export function ManagePanel({
           /* biarkan — user bisa set manual di Automation */
         }
       }
-      setDepMsg(autoArm ? "Deposit terkirim ✓ · automation aktif" : "Deposit terkirim ✓");
+      setDepMsg(autoArm ? t("Deposit terkirim ✓ · automation aktif") : t("Deposit terkirim ✓"));
       setAmount("");
       // Invalidate data server (RSC) supaya saldo/agent ke-refresh; kasih 1 blok.
       setTimeout(() => router.refresh(), 1500);
@@ -105,7 +107,7 @@ export function ManagePanel({
         setTab("automation");
       }
     } catch {
-      setDepMsg("Deposit dibatalkan / gagal.");
+      setDepMsg(t("Deposit dibatalkan / gagal."));
     } finally {
       setDepositing(false);
     }
@@ -115,18 +117,18 @@ export function ManagePanel({
   if (!wallet || !agent) {
     return (
       <div className="rounded-2xl border border-line/60 p-5">
-        <h3 className="text-sm font-medium">Agent wallet</h3>
+        <h3 className="text-sm font-medium">{t("Agent wallet")}</h3>
         <p className="mt-2 text-sm text-soft">
-          Bot bikin wallet baru khusus kamu. Kamu <b>deposit ETH</b> ke address-nya, bot LP dari
-          saldo itu, dan bisa <b>withdraw</b> balik ke wallet ini kapan saja — tanpa share private
-          key sendiri.
+          {t("Bot bikin wallet baru khusus kamu. Kamu")} <b>{t("deposit ETH")}</b>{" "}
+          {t("ke address-nya, bot LP dari saldo itu, dan bisa")} <b>{t("withdraw")}</b>{" "}
+          {t("balik ke wallet ini kapan saja — tanpa share private key sendiri.")}
         </p>
         <form action={createAgentAction} className="mt-4">
           <SubmitButton
-            pendingText="Membuat…"
+            pendingText={t("Membuat…")}
             className="w-full rounded-2xl bg-[#4f7cff] px-4 py-4 text-base font-semibold text-white disabled:opacity-60"
           >
-            Buat agent wallet
+            {t("Buat agent wallet")}
           </SubmitButton>
         </form>
       </div>
@@ -155,7 +157,7 @@ export function ManagePanel({
         <>
           <div className="rounded-2xl bg-shade/50 p-4">
             <div className="mb-1 flex items-start justify-between">
-              <span className="text-sm text-soft">Deposit ETH</span>
+              <span className="text-sm text-soft">{t("Deposit ETH")}</span>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/tokens/eth.png" alt="ETH" className="h-7 w-7 rounded-full" />
             </div>
@@ -169,14 +171,14 @@ export function ManagePanel({
             <div className="mt-2 flex items-center justify-between text-sm text-soft">
               <span>{ethUsd ? fmtUsd(amountEth * ethUsd) : "—"}</span>
               <div className="flex items-center gap-2">
-                <span>Wallet: {ownerBalanceEth === null ? "—" : `${fmtEth(ownerBalanceEth)} ETH`}</span>
+                <span>{t("Wallet:")} {ownerBalanceEth === null ? "—" : `${fmtEth(ownerBalanceEth)} ETH`}</span>
                 <button
                   type="button"
                   onClick={() => setAmount(fmtEth(maxDeposit))}
                   disabled={maxDeposit <= 0}
                   className="rounded-lg border border-line/60 px-2 py-1 text-xs hover:bg-shade disabled:opacity-50"
                 >
-                  MAX
+                  {t("MAX")}
                 </button>
               </div>
             </div>
@@ -184,7 +186,7 @@ export function ManagePanel({
 
           <div className="rounded-2xl border border-line/60 px-4">
             <Row
-              label="Network"
+              label={t("Network")}
               value={
                 <span className="flex items-center justify-end gap-1.5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -193,23 +195,24 @@ export function ManagePanel({
                 </span>
               }
             />
-            <Row label="Deposit (ETH)" value={fmtEth(amountEth)} />
+            <Row label={t("Deposit (ETH)")} value={fmtEth(amountEth)} />
             <Row
-              label="Fee APR"
+              label={t("Fee APR")}
               value={estApr === null ? "—" : `✨ ${fmtApr(estApr)}`}
-              sub={estApr === null ? undefined : "est. gross · fee saja"}
+              sub={estApr === null ? undefined : t("est. gross · fee saja")}
             />
-            <Row label="Est. fee / bln" value={ethUsd ? fmtUsd((baseUsd * aprFrac) / 12) : "—"} />
-            <Row label="Est. fee / thn" value={ethUsd ? fmtUsd(baseUsd * aprFrac) : "—"} last />
+            <Row label={t("Est. fee / bln")} value={ethUsd ? fmtUsd((baseUsd * aprFrac) / 12) : "—"} />
+            <Row label={t("Est. fee / thn")} value={ethUsd ? fmtUsd(baseUsd * aprFrac) : "—"} last />
           </div>
           <p className="text-[11px] leading-snug text-soft">
-            ⚠️ Ini estimasi <b>fee saja</b>. PnL LP sebenarnya didominasi <b>harga token</b> (bisa naik/turun
-            jauh) — fee cuma sebagian kecil.
+            {t("⚠️ Ini estimasi")} <b>{t("fee saja")}</b>
+            {t(". PnL LP sebenarnya didominasi")} <b>{t("harga token")}</b>{" "}
+            {t("(bisa naik/turun jauh) — fee cuma sebagian kecil.")}
           </p>
 
           <label className="flex items-center gap-2 text-xs">
             <input type="checkbox" checked={autoArm} onChange={(e) => setAutoArm(e.target.checked)} />
-            Langsung aktifkan automation (bot pakai dana ini)
+            {t("Langsung aktifkan automation (bot pakai dana ini)")}
           </label>
 
           <button
@@ -218,7 +221,7 @@ export function ManagePanel({
             disabled={depositing || amountEth <= 0}
             className="w-full rounded-2xl bg-[#4f7cff] px-4 py-4 text-base font-semibold text-white disabled:opacity-50"
           >
-            {depositing ? "Mengirim…" : autoArm ? "Deposit + aktifkan" : "Deposit"}
+            {depositing ? t("Mengirim…") : autoArm ? t("Deposit + aktifkan") : t("Deposit")}
           </button>
           {depMsg && <p className="text-center text-xs text-soft">{depMsg}</p>}
         </>
@@ -227,7 +230,7 @@ export function ManagePanel({
       {tab === "withdraw" && (
         <form action={withdrawAction} className="flex flex-col gap-4">
           <div className="rounded-2xl bg-shade/50 p-4">
-            <div className="text-sm text-soft">Saldo agent</div>
+            <div className="text-sm text-soft">{t("Saldo agent")}</div>
             <div className="mt-1 text-3xl font-semibold tracking-tight">
               {balanceEth === null ? "—" : `${fmtEth(balanceEth)} ETH`}
             </div>
@@ -247,14 +250,14 @@ export function ManagePanel({
                   wMode === m ? "bg-white text-ink shadow-sm" : "text-soft hover:text-ink"
                 }`}
               >
-                {m === "all" ? "Withdraw all" : "Custom"}
+                {m === "all" ? t("Withdraw all") : t("Custom")}
               </button>
             ))}
           </div>
 
           {wMode === "custom" ? (
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-soft">Jumlah (ETH)</span>
+              <span className="text-soft">{t("Jumlah (ETH)")}</span>
               <input
                 name="amountEth"
                 type="number"
@@ -265,15 +268,15 @@ export function ManagePanel({
               />
             </label>
           ) : (
-            <p className="text-xs text-soft">Tarik seluruh saldo agent (sisakan sedikit untuk gas).</p>
+            <p className="text-xs text-soft">{t("Tarik seluruh saldo agent (sisakan sedikit untuk gas).")}</p>
           )}
-          <p className="text-xs text-soft">Dana ditarik ke wallet owner yang kamu connect.</p>
+          <p className="text-xs text-soft">{t("Dana ditarik ke wallet owner yang kamu connect.")}</p>
           <SubmitButton
-            pendingText="Menarik…"
+            pendingText={t("Menarik…")}
             disabled={!balanceEth}
             className="w-full rounded-2xl bg-[#4f7cff] px-4 py-4 text-base font-semibold text-white disabled:opacity-50"
           >
-            {wMode === "all" ? "Withdraw all" : "Withdraw"}
+            {wMode === "all" ? t("Withdraw all") : t("Withdraw")}
           </SubmitButton>
         </form>
       )}
@@ -281,13 +284,13 @@ export function ManagePanel({
       {tab === "withdraw" && (
         <form action={closeAllAndWithdrawAction} className="border-t border-line/60 pt-3">
           <SubmitButton
-            pendingText="Menutup semua LP + menarik… (bisa ~1 menit)"
+            pendingText={t("Menutup semua LP + menarik… (bisa ~1 menit)")}
             className="w-full rounded-2xl border border-[#4f7cff]/50 px-4 py-3 text-sm font-semibold text-[#4f7cff] hover:bg-[#4f7cff]/10 disabled:opacity-60"
           >
-            Cabut semua LP + withdraw semua
+            {t("Cabut semua LP + withdraw semua")}
           </SubmitButton>
           <p className="mt-1.5 text-center text-[11px] text-soft">
-            Tutup semua posisi (burn + swap balik ke ETH), lalu tarik seluruh saldo ke owner.
+            {t("Tutup semua posisi (burn + swap balik ke ETH), lalu tarik seluruh saldo ke owner.")}
           </p>
         </form>
       )}
@@ -296,21 +299,21 @@ export function ManagePanel({
         <div className="flex flex-col gap-4">
           {justDeposited && (
             <div className="rounded-xl border border-[#4f7cff]/40 bg-[#4f7cff]/10 p-3 text-xs">
-              <b>Deposit diterima.</b> Naikkan <b>Fund</b> ke saldo agent baru — bot cuma deploy
-              sampai batas Fund, jadi deposit tanpa naikin Fund tak terpakai.
+              <b>{t("Deposit diterima.")}</b> {t("Naikkan")} <b>{t("Fund")}</b>{" "}
+              {t("ke saldo agent baru — bot cuma deploy sampai batas Fund, jadi deposit tanpa naikin Fund tak terpakai.")}
               <button
                 type="button"
                 onClick={() => balanceEth !== null && setFund(fmtEth(balanceEth))}
                 disabled={balanceEth === null}
                 className="ml-2 rounded-lg border border-line/60 px-2 py-0.5 hover:bg-shade disabled:opacity-50"
               >
-                Set Fund = saldo
+                {t("Set Fund = saldo")}
               </button>
             </div>
           )}
           <form action={updateWalletAction} className="flex flex-col gap-3">
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-soft">Fund (ETH) — dari saldo agent</span>
+              <span className="text-soft">{t("Fund (ETH) — dari saldo agent")}</span>
               <div className="flex items-center gap-1">
                 <input
                   name="fundEth"
@@ -327,15 +330,15 @@ export function ManagePanel({
                   disabled={balanceEth === null}
                   className="rounded-lg border border-line/60 px-3 py-2 text-xs hover:bg-shade disabled:opacity-50"
                 >
-                  MAX
+                  {t("MAX")}
                 </button>
               </div>
               <span className="text-xs text-soft">
-                Saldo agent: {balanceEth === null ? "—" : `${fmtEth(balanceEth)} ETH`}
+                {t("Saldo agent:")} {balanceEth === null ? "—" : `${fmtEth(balanceEth)} ETH`}
               </span>
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-soft">Max per pool (ETH)</span>
+              <span className="text-soft">{t("Max per pool (ETH)")}</span>
               <input
                 name="maxPerPoolEth"
                 type="number"
@@ -346,36 +349,36 @@ export function ManagePanel({
               />
             </label>
             <div className="flex items-center gap-4">
-              <Toggle name="automation" defaultChecked={wallet.automation === 1} label="automation" />
-              <Toggle name="autoswap" defaultChecked={wallet.autoswap === 1} label="auto-swap" />
+              <Toggle name="automation" defaultChecked={wallet.automation === 1} label={t("automation")} />
+              <Toggle name="autoswap" defaultChecked={wallet.autoswap === 1} label={t("auto-swap")} />
             </div>
             <SubmitButton
-              pendingText="Menyimpan…"
+              pendingText={t("Menyimpan…")}
               className="w-full rounded-xl border border-line/60 px-4 py-2 text-sm font-medium hover:bg-shade disabled:opacity-60"
             >
-              Save settings
+              {t("Save settings")}
             </SubmitButton>
           </form>
 
           <div className="flex items-center justify-between border-t border-line/60 pt-4">
             <form action={executeNowAction}>
               <SubmitButton
-                pendingText="Menjalankan…"
+                pendingText={t("Menjalankan…")}
                 disabled={wallet.automation === 0 || !canDeploy}
-                title={!canDeploy ? "Saldo agent kurang untuk deploy 1 posisi + gas — deposit dulu" : undefined}
+                title={!canDeploy ? t("Saldo agent kurang untuk deploy 1 posisi + gas — deposit dulu") : undefined}
                 className="rounded-xl bg-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
-                Execute now
+                {t("Execute now")}
               </SubmitButton>
             </form>
             <form action={removeWalletAction}>
               <button
                 type="submit"
                 disabled={funded}
-                title={funded ? "Withdraw dulu — masih ada dana" : undefined}
+                title={funded ? t("Withdraw dulu — masih ada dana") : undefined}
                 className="text-sm text-red-600 hover:underline disabled:cursor-not-allowed disabled:text-soft disabled:no-underline"
               >
-                remove agent
+                {t("remove agent")}
               </button>
             </form>
           </div>

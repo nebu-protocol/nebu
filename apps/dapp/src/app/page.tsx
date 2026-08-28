@@ -5,6 +5,7 @@ import { MiniLine } from "@/components/mini-line";
 import { Sparkline } from "@/components/sparkline";
 import { TokenIcon } from "@/components/token-icon";
 import { WelcomeCard } from "@/components/welcome-card";
+import { getT } from "@/lib/i18n-server";
 import { getPoolsTable } from "@/lib/lpdata";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
@@ -22,7 +23,8 @@ const chg = (n: number | null) =>
     </span>
   );
 
-export default function Page() {
+export default async function Page() {
+  const t = await getT();
   const pools = getPoolsTable(30);
 
   return (
@@ -37,7 +39,7 @@ export default function Page() {
         {/* top pools cards (ala Ondo asset cards) */}
         {pools.length > 0 && (
           <section className="mb-8">
-            <h2 className="mb-3 text-lg font-medium">Top pools</h2>
+            <h2 className="mb-3 text-lg font-medium">{t("Top pools")}</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {pools.slice(0, 4).map((p) => (
                 <div key={p.poolId} className="overflow-hidden rounded-2xl border border-line/60 p-4">
@@ -50,7 +52,7 @@ export default function Page() {
                   </div>
                   <div className="mt-3 flex items-baseline gap-1.5">
                     <span className="text-2xl font-semibold tracking-tight">{fmtPct(p.apr20, 0)}%</span>
-                    <span className="text-xs text-soft">APR</span>
+                    <span className="text-xs text-soft">{t("APR")}</span>
                   </div>
                   <div className="text-xs">{chg(p.changePct)}</div>
                   <div className="mt-3 h-14">
@@ -64,26 +66,26 @@ export default function Page() {
 
         {/* pools table */}
         <section>
-          <h2 className="mb-3 text-lg font-medium">Pools</h2>
+          <h2 className="mb-3 text-lg font-medium">{t("Pools")}</h2>
           <div className="overflow-x-auto rounded-2xl border border-line/60">
             <table className="w-full text-sm">
               <thead className="border-line/60 border-b text-soft">
                 <tr>
                   <th className="hidden px-4 py-3 text-left font-medium sm:table-cell">#</th>
-                  <th className="px-4 py-3 text-left font-medium">Pool</th>
-                  <th className="px-4 py-3 text-right font-medium">APR ±20%</th>
-                  <th className="hidden px-4 py-3 text-right font-medium sm:table-cell">Δ recent</th>
+                  <th className="px-4 py-3 text-left font-medium">{t("Pool")}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t("APR ±20%")}</th>
+                  <th className="hidden px-4 py-3 text-right font-medium sm:table-cell">{t("Δ recent")}</th>
                   <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">Fee/ETH/d</th>
                   <th className="hidden px-4 py-3 text-right font-medium md:table-cell">Vol (ETH)</th>
-                  <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">Swaps/h</th>
-                  <th className="hidden px-4 py-3 text-right font-medium md:table-cell">Trend</th>
+                  <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">{t("Swaps/h")}</th>
+                  <th className="hidden px-4 py-3 text-right font-medium md:table-cell">{t("Trend")}</th>
                 </tr>
               </thead>
               <tbody>
                 {pools.length === 0 && (
                   <tr>
                     <td colSpan={8} className="px-4 py-8 text-center text-soft">
-                      Belum ada data — collector sedang mengumpulkan.
+                      {t("Belum ada data — collector sedang mengumpulkan.")}
                     </td>
                   </tr>
                 )}
@@ -113,7 +115,7 @@ export default function Page() {
             </table>
           </div>
           <p className="mt-2 text-xs text-soft">
-            APR gross (pre-IL). Δ dari time-series harga on-chain. Bukan nasihat finansial.
+            {t("APR gross (pre-IL). Δ dari time-series harga on-chain. Bukan nasihat finansial.")}
           </p>
         </section>
       </main>

@@ -7,6 +7,7 @@ import { createPublicClient, http, parseAbi } from "viem";
 import { bsc } from "viem/chains";
 import { useRouter } from "next/navigation";
 
+import { useT } from "@/lib/i18n-client";
 import { setVaultAddressAction } from "@/server/wallet-actions";
 
 const FACTORY = (process.env.NEXT_PUBLIC_LP_VAULT_FACTORY ?? "") as `0x${string}` | "";
@@ -39,11 +40,12 @@ export function VaultCard({
   const [msg, setMsg] = useState<string | null>(null);
   const [capEth, setCapEth] = useState("0.05");
   const [depEth, setDepEth] = useState("");
+  const t = useT();
 
   if (!FACTORY) {
     return (
       <div className="rounded-2xl border border-line/60 p-5 text-sm text-soft">
-        Vault factory belum dikonfigurasi (deploy dulu, set NEXT_PUBLIC_LP_VAULT_FACTORY).
+        {t("Vault factory belum dikonfigurasi (deploy dulu, set NEXT_PUBLIC_LP_VAULT_FACTORY).")}
       </div>
     );
   }
@@ -54,15 +56,15 @@ export function VaultCard({
     try {
       await wc.switchChain({ id: bsc.id });
     } catch {
-      throw new Error("Pindahkan wallet ke BNB Smart Chain (56) dulu.");
+      throw new Error(t("Pindahkan wallet ke BNB Smart Chain (56) dulu."));
     }
   };
 
   const createVault = async () => {
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return setMsg("Wallet tidak terhubung.");
+    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return setMsg(t("Wallet tidak terhubung."));
     if (primaryWallet.address.toLowerCase() !== owner.toLowerCase())
-      return setMsg("Connect wallet owner-mu dulu.");
-    if (!agent) return setMsg("Buat agent wallet dulu.");
+      return setMsg(t("Connect wallet owner-mu dulu."));
+    if (!agent) return setMsg(t("Buat agent wallet dulu."));
     setBusy(true);
     setMsg(null);
     try {
@@ -83,10 +85,10 @@ export function VaultCard({
         args: [owner as `0x${string}`],
       })) as string;
       await setVaultAddressAction(vault); // server verifies vaultOf on-chain again
-      setMsg("Vault dibuat ✓ — sekarang deposit BNB.");
+      setMsg(t("Vault dibuat ✓ — sekarang deposit BNB."));
       setTimeout(() => router.refresh(), 1500);
     } catch (e) {
-      setMsg(`Gagal: ${e instanceof Error ? e.message : "batal"}`);
+      setMsg(`${t("Gagal:")} ${e instanceof Error ? e.message : t("batal")}`);
     } finally {
       setBusy(false);
     }
@@ -94,7 +96,7 @@ export function VaultCard({
 
   const deposit = async () => {
     if (!vaultAddress || Number(depEth) <= 0) return;
-    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return setMsg("Wallet tidak terhubung.");
+    if (!primaryWallet || !isEthereumWallet(primaryWallet)) return setMsg(t("Wallet tidak terhubung."));
     setBusy(true);
     setMsg(null);
     try {
@@ -104,11 +106,11 @@ export function VaultCard({
         to: vaultAddress as `0x${string}`,
         value: BigInt(Math.round(Number(depEth) * 1e18)),
       });
-      setMsg("Deposit ke vault terkirim ✓");
+      setMsg(t("Deposit ke vault terkirim ✓"));
       setDepEth("");
       setTimeout(() => router.refresh(), 1500);
     } catch (e) {
-      setMsg(`Gagal: ${e instanceof Error ? e.message : "batal"}`);
+      setMsg(`${t("Gagal:")} ${e instanceof Error ? e.message : t("batal")}`);
     } finally {
       setBusy(false);
     }
@@ -120,22 +122,22 @@ export function VaultCard({
     <div className="rounded-2xl border border-line/60 p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-medium">Secure vault (BSC)</h3>
+          <h3 className="text-sm font-medium">{t("Secure vault (BSC)")}</h3>
           <p className="mt-0.5 text-xs text-soft">
-            Dana di kontrak vault — bot cuma bisa LP, <b>tak bisa kuras</b>. Owner-only withdraw.
+            {t("Dana di kontrak vault — bot cuma bisa LP,")} <b>{t("tak bisa kuras")}</b>. {t("Owner-only withdraw.")}
           </p>
         </div>
         <span
           className={`rounded px-1.5 py-0.5 text-xs font-medium ${vaultAddress ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}
         >
-          {vaultAddress ? "aktif" : "belum ada"}
+          {vaultAddress ? t("aktif") : t("belum ada")}
         </span>
       </div>
 
       {vaultAddress ? (
         <div className="mt-4 space-y-3">
           <div className="text-xs text-soft">
-            Vault:{" "}
+            {t("Vault:")}{" "}
             <a
               className="font-mono text-ink hover:underline"
               href={`https://bscscan.com/address/${vaultAddress}`}
@@ -158,14 +160,14 @@ export function VaultCard({
               disabled={busy}
               className="rounded-lg bg-ink px-3 py-1.5 text-sm font-medium text-bg disabled:opacity-60"
             >
-              {busy ? "…" : "Deposit ke vault"}
+              {busy ? "…" : t("Deposit ke vault")}
             </button>
           </div>
         </div>
       ) : (
         <div className="mt-4 space-y-3">
           <label className="block text-xs text-soft">
-            Cap notional per operasi (BNB) — batas dana per aksi bot
+            {t("Cap notional per operasi (BNB) — batas dana per aksi bot")}
             <input
               inputMode="decimal"
               value={capEth}
@@ -178,11 +180,11 @@ export function VaultCard({
             disabled={busy || !agent}
             className="w-full rounded-lg bg-ink px-3 py-2 text-sm font-medium text-bg disabled:opacity-60"
           >
-            {busy ? "Membuat vault…" : "Buat vault"}
+            {busy ? t("Membuat vault…") : t("Buat vault")}
           </button>
           {agent && (
             <p className="text-xs text-soft">
-              Agent (bot): <span className="font-mono">{short(agent)}</span> — bisa dicabut kapan saja.
+              {t("Agent (bot):")} <span className="font-mono">{short(agent)}</span> {t("— bisa dicabut kapan saja.")}
             </p>
           )}
         </div>

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { LanguageToggle } from "./language-toggle";
 import { MobileNav, NavLinks } from "./nav-links";
 import { WalletButton } from "./wallet-button";
 
@@ -16,6 +17,7 @@ export function Header() {
           <NavLinks />
         </div>
         <div className="flex items-center gap-2">
+          <LanguageToggle />
           <span
             title="Robinhood Chain"
             className="hidden h-8 w-8 items-center justify-center rounded-lg border border-line/60 sm:flex"

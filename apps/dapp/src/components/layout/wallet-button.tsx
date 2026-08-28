@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { GeneratedAvatar } from "@/components/generated-avatar";
+import { useT } from "@/lib/i18n-client";
 import { signOutAction } from "@/server/wallet-actions";
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -15,6 +16,7 @@ const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
  */
 export function WalletButton() {
   const { primaryWallet, setShowAuthFlow, handleLogOut } = useDynamicContext();
+  const t = useT();
   const router = useRouter();
   const addr = primaryWallet?.address ?? null;
   const [agent, setAgent] = useState<string | null>(null);
@@ -73,7 +75,7 @@ export function WalletButton() {
         onClick={() => setShowAuthFlow(true)}
         className="rounded-lg bg-ink px-3 py-1.5 text-sm font-medium text-white"
       >
-        Connect wallet
+        {t("Connect wallet")}
       </button>
     );
   }
@@ -97,7 +99,7 @@ export function WalletButton() {
                 <div className="flex items-center gap-1.5 text-xs text-soft">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/robinhood-chain.png" alt="" className="h-3.5 w-3.5 rounded-full" />
-                  Robinhood Chain
+                  {t("Robinhood Chain")}
                 </div>
               </div>
             </div>
@@ -105,9 +107,9 @@ export function WalletButton() {
             {agent && (
               <div className="border-t border-line/60 px-4 py-3 text-xs">
                 <div className="flex items-center justify-between text-soft">
-                  <span>Agent (deposit)</span>
+                  <span>{t("Agent (deposit)")}</span>
                   <button type="button" onClick={() => copy("agent", agent)} className="hover:text-ink">
-                    {copied === "agent" ? "copied ✓" : "copy"}
+                    {copied === "agent" ? t("copied ✓") : t("copy")}
                   </button>
                 </div>
                 <div className="mt-0.5 font-mono">{short(agent)}</div>
@@ -120,14 +122,14 @@ export function WalletButton() {
                 onClick={() => copy("owner", addr)}
                 className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium hover:bg-shade"
               >
-                {copied === "owner" ? "Address copied ✓" : "Copy Address"}
+                {copied === "owner" ? t("Address copied ✓") : t("Copy Address")}
               </button>
               <button
                 type="button"
                 onClick={disconnect}
                 className="w-full rounded-xl px-3 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-shade"
               >
-                Disconnect Wallet
+                {t("Disconnect Wallet")}
               </button>
             </div>
           </div>

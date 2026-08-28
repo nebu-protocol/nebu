@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { useT } from "@/lib/i18n-client";
 import type { OwnedWallet } from "@/server/wallet-actions";
 
 import { ManagePanel } from "./manage-panel";
@@ -20,6 +21,7 @@ type Props = {
 
 /** Mobile (< lg): tombol Deposit/Withdraw/Automation → buka dialog panel. */
 export function MobileManage(props: Props) {
+  const t = useT();
   const [openTab, setOpenTab] = useState<Tab | null>(null);
 
   // Belum ada agent → tampilkan panel create langsung (tanpa tombol).
@@ -50,7 +52,7 @@ export function MobileManage(props: Props) {
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
           <button
             type="button"
-            aria-label="close"
+            aria-label={t("close")}
             className="absolute inset-0 cursor-default bg-black/40"
             onClick={() => setOpenTab(null)}
           />
@@ -61,7 +63,7 @@ export function MobileManage(props: Props) {
                 onClick={() => setOpenTab(null)}
                 className="rounded-lg px-2 py-1 text-sm text-soft hover:bg-shade"
               >
-                ✕ tutup
+                {t("✕ tutup")}
               </button>
             </div>
             <ManagePanel {...props} initialTab={openTab} />

@@ -16,6 +16,7 @@ import {
   getWalletRealPnl,
   getWalletRealPositions,
 } from "@/lib/lpdata";
+import { getT } from "@/lib/i18n-server";
 import { SubmitButton } from "@/components/submit-button";
 import { getSiweAddress } from "@/server/siwe";
 import { closePositionAction, getOwnedWallet } from "@/server/wallet-actions";
@@ -42,6 +43,7 @@ const fmtEth = (n: number) => {
 };
 
 export default async function PortfolioPage() {
+  const t = await getT();
   const siwe = await getSiweAddress();
 
   return (
@@ -51,7 +53,7 @@ export default async function PortfolioPage() {
         {siwe ? (
           <WelcomeHeader address={siwe} />
         ) : (
-          <h1 className="mb-6 text-2xl font-semibold tracking-tight">Portfolio</h1>
+          <h1 className="mb-6 text-2xl font-semibold tracking-tight">{t("Portfolio")}</h1>
         )}
         {siwe ? <ManagedView address={siwe} /> : <PortfolioClient />}
         <p className="mt-4 text-xs text-soft">
@@ -63,6 +65,7 @@ export default async function PortfolioPage() {
 }
 
 async function ManagedView({ address }: { address: string }) {
+  const t = await getT();
   const owned = await getOwnedWallet();
   // Semua read/write ke AGENT wallet, bukan address SIWE. Belum ada agent => panel create.
   const agent = owned?.address ?? null;
@@ -112,7 +115,7 @@ async function ManagedView({ address }: { address: string }) {
         <PortfolioChart
           points={series}
           headerValue={totalUsd}
-          label={`Total value · net vs HODL ${seriesIsReal ? "(on-chain)" : "(sim)"}`}
+          label={seriesIsReal ? t("Total value · net vs HODL (on-chain)") : t("Total value · net vs HODL (sim)")}
         />
 
         {agent && (
@@ -120,18 +123,18 @@ async function ManagedView({ address }: { address: string }) {
             <span
               className={`rounded px-1.5 py-0.5 text-xs font-medium ${liveMode ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}
             >
-              {liveMode ? "LIVE" : "SIMULASI"}
+              {liveMode ? t("LIVE") : t("SIMULASI")}
             </span>
-            <span className="font-medium">Bot {owned?.automation ? "aktif" : "nonaktif"}</span>
+            <span className="font-medium">Bot {owned?.automation ? t("aktif") : t("nonaktif")}</span>
             <span className="text-soft">
-              {botStatus?.lastRunTs ? `· run ${timeAgo(botStatus.lastRunTs)}` : "· belum jalan"}
+              {botStatus?.lastRunTs ? `· run ${timeAgo(botStatus.lastRunTs)}` : t("· belum jalan")}
             </span>
             {botStatus?.lastRunTs && botStatus.live > 0 ? (
-              <span className="text-soft">· {botStatus.live} aksi on-chain</span>
+              <span className="text-soft">· {botStatus.live} {t("aksi on-chain")}</span>
             ) : null}
             {botStatus?.edgeRatio != null && botStatus.edgeSample >= 5 ? (
               <span
-                title="Rasio rata-rata untung ÷ rata-rata rugi posisi tertutup. Edge strategi positif kalau ≥ ~4.2:1 pada win-rate rendah; di bawahnya, edge tipis/negatif."
+                title={t("Rasio rata-rata untung ÷ rata-rata rugi posisi tertutup. Edge strategi positif kalau ≥ ~4.2:1 pada win-rate rendah; di bawahnya, edge tipis/negatif.")}
                 className={`rounded px-1.5 py-0.5 text-xs font-medium ${botStatus.edgeRatio >= 4.2 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}
               >
                 edge {botStatus.edgeRatio.toFixed(1)}:1
@@ -145,8 +148,8 @@ async function ManagedView({ address }: { address: string }) {
           <div className="rounded-2xl border border-line/60 p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-medium">Strategy edge</h3>
-                <p className="mt-0.5 text-xs text-soft">Rata-rata untung ÷ rugi posisi tertutup. Target ≥ 4.2:1.</p>
+                <h3 className="text-sm font-medium">{t("Strategy edge")}</h3>
+                <p className="mt-0.5 text-xs text-soft">{t("Rata-rata untung ÷ rugi posisi tertutup. Target ≥ 4.2:1.")}</p>
                 <div className="mt-2 flex items-baseline gap-2">
                   <span
                     className={`text-2xl font-semibold ${botStatus.edgeRatio >= 4.2 ? "text-emerald-600" : "text-amber-600"}`}
@@ -174,11 +177,11 @@ async function ManagedView({ address }: { address: string }) {
         {/* Metrik ringkas — dipindah ke antara status bot & risk manager. */}
         <div className="rounded-2xl border border-line/60 p-5">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Metric label="Deployed" value={deployedUsd === null ? `${fmtEth(deployedEth)} ETH` : fmtUsd(deployedUsd)} />
-            <Metric label="Open positions" value={String(realPnl?.positions ?? 0)} />
-            <Metric label="Net vs HODL" value={avgNet === null ? "—" : pct(avgNet)} tone={avgNet} />
+            <Metric label={t("Deployed")} value={deployedUsd === null ? `${fmtEth(deployedEth)} ETH` : fmtUsd(deployedUsd)} />
+            <Metric label={t("Open positions")} value={String(realPnl?.positions ?? 0)} />
+            <Metric label={t("Net vs HODL")} value={avgNet === null ? "—" : pct(avgNet)} tone={avgNet} />
             <Metric
-              label="Your PnL"
+              label={t("Your PnL")}
               value={
                 pnlIsReal && pnlEth !== null
                   ? pnlUsd === null
@@ -204,7 +207,7 @@ async function ManagedView({ address }: { address: string }) {
         {agent && <VaultCard owner={address} agent={agent} vaultAddress={owned?.vault_address ?? null} />}
 
       <div>
-        <h3 className="mb-1 text-sm font-medium">Your positions</h3>
+        <h3 className="mb-1 text-sm font-medium">{t("Your positions")}</h3>
         <p className="mb-2 text-xs text-soft">
           On-chain nyata · Net vs HODL = nilai posisi sekarang vs ETH awal.
         </p>
@@ -212,9 +215,9 @@ async function ManagedView({ address }: { address: string }) {
           <table className="w-full min-w-[440px] whitespace-nowrap text-sm">
             <thead className="border-b border-line/60 text-soft">
               <tr>
-                <th className="px-4 py-3 text-left font-medium">Pair</th>
-                <th className="px-4 py-3 text-right font-medium">Fees</th>
-                <th className="px-4 py-3 text-right font-medium">Net vs HODL</th>
+                <th className="px-4 py-3 text-left font-medium">{t("Pair")}</th>
+                <th className="px-4 py-3 text-right font-medium">{t("Fees")}</th>
+                <th className="px-4 py-3 text-right font-medium">{t("Net vs HODL")}</th>
                 <th className="px-4 py-3 text-right font-medium"></th>
               </tr>
             </thead>
@@ -222,7 +225,7 @@ async function ManagedView({ address }: { address: string }) {
               {positions.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-4 py-8 text-center text-soft">
-                    Belum ada posisi. Aktifkan automation + fund untuk mulai.
+                    {t("Belum ada posisi. Aktifkan automation + fund untuk mulai.")}
                   </td>
                 </tr>
               )}
@@ -249,10 +252,10 @@ async function ManagedView({ address }: { address: string }) {
                     <form action={closePositionAction}>
                       <input type="hidden" name="poolId" value={pos.poolId} />
                       <SubmitButton
-                        pendingText="Menutup…"
+                        pendingText={t("Menutup…")}
                         className="rounded-lg border border-line/60 px-2.5 py-1 text-xs hover:bg-shade disabled:opacity-60"
                       >
-                        Close LP
+                        {t("Close LP")}
                       </SubmitButton>
                     </form>
                   </td>

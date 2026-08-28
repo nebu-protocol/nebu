@@ -5,12 +5,18 @@ import { DynamicContextProvider } from "@dynamic-labs/sdk-react-core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
+import { LocaleProvider } from "../lib/i18n-client";
+import { DEFAULT_LOCALE, type Locale } from "../lib/i18n";
+
 // NEXT_PUBLIC = ikut ke client bundle; env id Dynamic memang publik (keamanan lewat
 // Allowed Origins/CORS di dashboard, bukan kerahasiaan id). Fallback biar build VPS aman.
 const DYNAMIC_ENV_ID =
   process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID ?? "9916a155-db3a-4ff4-8e0a-35888b1bfe7a";
 
-export function Providers({ children }: Readonly<{ children: React.ReactNode }>) {
+export function Providers({
+  children,
+  initialLocale = DEFAULT_LOCALE,
+}: Readonly<{ children: React.ReactNode; initialLocale?: Locale }>) {
   const [queryClient] = useState(
     () => new QueryClient({ defaultOptions: { queries: { staleTime: 10_000, retry: 1 } } }),
   );
@@ -53,7 +59,9 @@ export function Providers({ children }: Readonly<{ children: React.ReactNode }>)
         },
       }}
     >
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <LocaleProvider initial={initialLocale}>{children}</LocaleProvider>
+      </QueryClientProvider>
     </DynamicContextProvider>
   );
 }

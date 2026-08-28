@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { GeneratedAvatar } from "@/components/generated-avatar";
 import { Header } from "@/components/layout/header";
+import { getT } from "@/lib/i18n-server";
 import { getLeaderboard, getLpStats } from "@/lib/lpdata";
 
 export const metadata: Metadata = { title: "Leaderboard" };
@@ -14,7 +15,8 @@ const fmtUsd = (n: number | null) =>
   n === null ? "—" : n >= 1 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
 const medal = (i: number) => (i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : String(i + 1));
 
-export default function LeaderboardPage() {
+export default async function LeaderboardPage() {
+  const t = await getT();
   const rows = getLeaderboard();
   const ethUsd = getLpStats().ethUsd;
 
@@ -22,7 +24,7 @@ export default function LeaderboardPage() {
     <>
       <Header />
       <main className="mx-auto max-w-4xl px-4 py-8">
-        <h1 className="mb-1 text-2xl font-semibold tracking-tight">Leaderboard</h1>
+        <h1 className="mb-1 text-2xl font-semibold tracking-tight">{t("Leaderboard")}</h1>
         <p className="mb-6 text-sm text-soft">
           Peringkat wallet berdasarkan rata-rata net vs HODL (posisi OPEN, PnL on-chain nyata).
         </p>
@@ -32,18 +34,18 @@ export default function LeaderboardPage() {
             <thead className="border-b border-line/60 text-soft">
               <tr>
                 <th className="px-4 py-3 text-left font-medium">#</th>
-                <th className="px-4 py-3 text-left font-medium">Wallet</th>
-                <th className="px-4 py-3 text-right font-medium">Avg net vs HODL</th>
-                <th className="px-4 py-3 text-right font-medium">PnL</th>
-                <th className="px-4 py-3 text-right font-medium">Positions</th>
-                <th className="px-4 py-3 text-right font-medium">Deployed</th>
+                <th className="px-4 py-3 text-left font-medium">{t("Wallet")}</th>
+                <th className="px-4 py-3 text-right font-medium">{t("Avg net vs HODL")}</th>
+                <th className="px-4 py-3 text-right font-medium">{t("PnL")}</th>
+                <th className="px-4 py-3 text-right font-medium">{t("Positions")}</th>
+                <th className="px-4 py-3 text-right font-medium">{t("Deployed")}</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-soft">
-                    Belum ada wallet dengan posisi + PnL. Cek lagi setelah bot deploy & hitung PnL.
+                    {t("Belum ada wallet dengan posisi + PnL. Cek lagi setelah bot deploy & hitung PnL.")}
                   </td>
                 </tr>
               )}

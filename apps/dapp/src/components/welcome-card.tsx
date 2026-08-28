@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { GeneratedAvatar } from "@/components/generated-avatar";
 import { Sparkline } from "@/components/sparkline";
+import { getT } from "@/lib/i18n-server";
 import { getBalanceEth, getLpStats, getWalletChartSeries, getWalletRealPnl } from "@/lib/lpdata";
 import { getSiweAddress } from "@/server/siwe";
 import { getOwnedWallet } from "@/server/wallet-actions";
@@ -27,6 +28,7 @@ function BigUsd({ n }: { n: number | null }) {
 
 /** Kartu portfolio ala Ondo: Welcome + Total value + chart. Server component. */
 export async function WelcomeCard() {
+  const t = await getT();
   const siwe = await getSiweAddress();
   const ethUsd = getLpStats().ethUsd;
 
@@ -34,14 +36,14 @@ export async function WelcomeCard() {
     return (
       <div className="rounded-2xl border border-line/60 p-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">Portfolio kamu</h2>
+          <h2 className="text-lg font-medium">{t("Portfolio kamu")}</h2>
           <Link href="/portfolio" className="text-sm text-soft hover:text-ink">
-            Connect wallet →
+            {t("Connect wallet")} →
           </Link>
         </div>
-        <div className="mt-4 text-sm text-soft">Total Portfolio Value</div>
+        <div className="mt-4 text-sm text-soft">{t("Total Portfolio Value")}</div>
         <BigUsd n={null} />
-        <p className="mt-1 text-xs text-soft">Connect wallet di Portfolio untuk melihat nilai posisimu.</p>
+        <p className="mt-1 text-xs text-soft">{t("Connect wallet di Portfolio untuk melihat nilai posisimu.")}</p>
       </div>
     );
   }
@@ -68,14 +70,14 @@ export async function WelcomeCard() {
         <div className="flex items-center gap-3">
           <GeneratedAvatar name={siwe} size={40} />
           <h2 className="text-lg font-medium">
-            Welcome, <span className="font-mono">{short(siwe)}</span>
+            {t("Welcome,")} <span className="font-mono">{short(siwe)}</span>
           </h2>
         </div>
         <Link href="/portfolio" className="whitespace-nowrap text-sm text-soft hover:text-ink">
-          View Full Portfolio →
+          {t("View Full Portfolio")} →
         </Link>
       </div>
-      <div className="relative z-10 mt-4 text-sm text-soft">Total Portfolio Value</div>
+      <div className="relative z-10 mt-4 text-sm text-soft">{t("Total Portfolio Value")}</div>
       <div className="relative z-10">
         <BigUsd n={totalUsd} />
       </div>
@@ -85,7 +87,7 @@ export async function WelcomeCard() {
             {fmtUsd(pnlUsd)} ({fmtPct(netPct)})
           </span>
         )}{" "}
-        net vs HODL
+        {t("net vs HODL")}
       </div>
       {/* chart kanan-bawah */}
       <div className="pointer-events-none absolute bottom-0 right-0 h-24 w-3/5 opacity-90">

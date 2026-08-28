@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { useT } from "@/lib/i18n-client";
+
 import {
   type ChartRange,
   type HistoryPoint,
@@ -38,6 +40,7 @@ export function PortfolioChart({
   unit?: "%" | "$";
   headerValue?: number | null;
 }) {
+  const t = useT();
   const [range, setRange] = useState<ChartRange>("ALL");
 
   const filtered = useMemo(() => {
@@ -71,7 +74,7 @@ export function PortfolioChart({
       </div>
       {filtered.length < 2 ? (
         <div className="flex h-[180px] items-center justify-center text-sm text-soft">
-          Belum cukup data — collector sedang mengumpulkan time-series.
+          {t("Belum cukup data — collector sedang mengumpulkan time-series.")}
         </div>
       ) : (
         <PriceChart

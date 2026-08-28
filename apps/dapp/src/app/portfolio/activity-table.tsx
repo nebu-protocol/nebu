@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { TokenIcon } from "@/components/token-icon";
+import { useT } from "@/lib/i18n-client";
 import type { Activity } from "@/lib/lpdata";
 
 const KIND_LABEL: Record<string, string> = {
@@ -58,6 +59,7 @@ function FlowIcons({
   tokenAddr: string | null;
   dir: "in" | "out" | "close";
 }) {
+  const t = useT();
   const eth = <TokenIcon symbol="ETH" size={18} />;
   // Token icon: hover → nama token, klik → halaman token di block explorer.
   const tok = <TokenIcon symbol={tokenSym ?? "?"} address={tokenAddr} size={18} link />;
@@ -77,7 +79,7 @@ function FlowIcons({
       seq = [LP, arrow, eth, tok];
       break;
     case "WITHDRAW":
-      seq = [eth, arrow, <span className="text-xs text-soft">owner</span>];
+      seq = [eth, arrow, <span className="text-xs text-soft">{t("owner")}</span>];
       break;
     default:
       seq = [<span className="text-xs text-soft">{kind}</span>];
@@ -100,6 +102,7 @@ const STATUSES = ["ALL", "CONFIRMED", "SENT", "FAILED"] as const;
 const PAGE_SIZE = 12;
 
 export function ActivityTable({ rows, ethUsd }: { rows: Activity[]; ethUsd: number | null }) {
+  const t = useT();
   const [action, setAction] = useState<(typeof ACTIONS)[number]>("ALL");
   const [status, setStatus] = useState<(typeof STATUSES)[number]>("ALL");
   const [q, setQ] = useState("");
@@ -142,7 +145,7 @@ export function ActivityTable({ rows, ethUsd }: { rows: Activity[]; ethUsd: numb
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-medium">Activity</h3>
+        <h3 className="text-sm font-medium">{t("Activity")}</h3>
         <div className="flex flex-wrap items-center gap-2">
           <input
             value={q}
@@ -150,7 +153,7 @@ export function ActivityTable({ rows, ethUsd }: { rows: Activity[]; ethUsd: numb
               setQ(e.target.value);
               setPage(0);
             }}
-            placeholder="Cari pair / aksi…"
+            placeholder={t("Cari pair / aksi…")}
             className="w-36 rounded-lg border border-line/60 bg-transparent px-2 py-1 text-xs outline-none focus:border-ink"
           />
           <select
@@ -163,7 +166,7 @@ export function ActivityTable({ rows, ethUsd }: { rows: Activity[]; ethUsd: numb
           >
             {ACTIONS.map((a) => (
               <option key={a} value={a}>
-                {a === "ALL" ? "All actions" : (KIND_LABEL[a] ?? a)}
+                {a === "ALL" ? t("All actions") : t(KIND_LABEL[a] ?? a)}
               </option>
             ))}
           </select>
@@ -177,7 +180,7 @@ export function ActivityTable({ rows, ethUsd }: { rows: Activity[]; ethUsd: numb
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
-                {s === "ALL" ? "All status" : s}
+                {s === "ALL" ? t("All status") : s}
               </option>
             ))}
           </select>
@@ -188,29 +191,29 @@ export function ActivityTable({ rows, ethUsd }: { rows: Activity[]; ethUsd: numb
         <table className="w-full min-w-[540px] whitespace-nowrap text-sm">
           <thead className="border-b border-line/60 text-soft">
             <tr>
-              <th className="whitespace-nowrap px-3 py-3 text-left font-medium">Action</th>
-              <th className="whitespace-nowrap px-3 py-3 text-left font-medium">Flow</th>
+              <th className="whitespace-nowrap px-3 py-3 text-left font-medium">{t("Action")}</th>
+              <th className="whitespace-nowrap px-3 py-3 text-left font-medium">{t("Flow")}</th>
               <th
                 className="cursor-pointer whitespace-nowrap px-3 py-3 text-right font-medium hover:text-ink"
                 onClick={() => toggleSort("amount")}
               >
-                Amount {sortKey === "amount" ? (asc ? "↑" : "↓") : ""}
+                {t("Amount")} {sortKey === "amount" ? (asc ? "↑" : "↓") : ""}
               </th>
-              <th className="whitespace-nowrap px-3 py-3 text-left font-medium">Status</th>
+              <th className="whitespace-nowrap px-3 py-3 text-left font-medium">{t("Status")}</th>
               <th
                 className="cursor-pointer whitespace-nowrap px-3 py-3 text-right font-medium hover:text-ink"
                 onClick={() => toggleSort("time")}
               >
-                When {sortKey === "time" ? (asc ? "↑" : "↓") : ""}
+                {t("When")} {sortKey === "time" ? (asc ? "↑" : "↓") : ""}
               </th>
-              <th className="whitespace-nowrap px-3 py-3 text-right font-medium">Tx</th>
+              <th className="whitespace-nowrap px-3 py-3 text-right font-medium">{t("Tx")}</th>
             </tr>
           </thead>
           <tbody>
             {slice.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-6 text-center text-soft">
-                  Tidak ada aktivitas untuk filter ini.
+                  {t("Tidak ada aktivitas untuk filter ini.")}
                 </td>
               </tr>
             )}
@@ -218,7 +221,7 @@ export function ActivityTable({ rows, ethUsd }: { rows: Activity[]; ethUsd: numb
               const dir = DIRECTION[a.kind] ?? "in";
               return (
                 <tr key={`${a.ts}-${i}`} className="border-t border-line/60">
-                  <td className="whitespace-nowrap px-3 py-3 font-medium">{KIND_LABEL[a.kind] ?? a.kind}</td>
+                  <td className="whitespace-nowrap px-3 py-3 font-medium">{t(KIND_LABEL[a.kind] ?? a.kind)}</td>
                   <td className="px-3 py-3">
                     <FlowIcons kind={a.kind} tokenSym={a.tokenSym} tokenAddr={a.tokenAddr} dir={dir} />
                   </td>
@@ -278,7 +281,7 @@ export function ActivityTable({ rows, ethUsd }: { rows: Activity[]; ethUsd: numb
 
       <div className="mt-2 flex items-center justify-between text-xs text-soft">
         <span>
-          {filtered.length} aktivitas · hal {clampedPage + 1}/{pages}
+          {filtered.length} {t("aktivitas · hal")} {clampedPage + 1}/{pages}
         </span>
         <div className="flex gap-1">
           <button
@@ -287,7 +290,7 @@ export function ActivityTable({ rows, ethUsd }: { rows: Activity[]; ethUsd: numb
             disabled={clampedPage === 0}
             className="rounded-lg border border-line/60 px-2 py-1 hover:bg-shade disabled:opacity-40"
           >
-            ← prev
+            {t("← prev")}
           </button>
           <button
             type="button"
@@ -295,7 +298,7 @@ export function ActivityTable({ rows, ethUsd }: { rows: Activity[]; ethUsd: numb
             disabled={clampedPage >= pages - 1}
             className="rounded-lg border border-line/60 px-2 py-1 hover:bg-shade disabled:opacity-40"
           >
-            next →
+            {t("next →")}
           </button>
         </div>
       </div>

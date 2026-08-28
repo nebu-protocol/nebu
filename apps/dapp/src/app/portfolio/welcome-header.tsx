@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 
 import { GeneratedAvatar } from "@/components/generated-avatar";
+import { useT } from "@/lib/i18n-client";
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 /** Judul halaman portfolio: Welcome + jam hidup (client), ganti teks "Portfolio". */
 export function WelcomeHeader({ address }: { address: string }) {
+  const t = useT();
   const [now, setNow] = useState("");
   useEffect(() => {
     const fmt = () => {
@@ -31,7 +33,7 @@ export function WelcomeHeader({ address }: { address: string }) {
       <div className="flex min-w-0 items-center gap-3">
         <GeneratedAvatar name={address} size={40} />
         <h1 className="truncate text-xl font-semibold tracking-tight sm:text-2xl">
-          Welcome, <span className="font-mono">{short(address)}</span>
+          {t("Welcome,")} <span className="font-mono">{short(address)}</span>
         </h1>
       </div>
       <span className="hidden whitespace-nowrap text-sm text-soft sm:block">{now}</span>

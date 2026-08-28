@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 
+import { useT } from "@/lib/i18n-client";
 import { RISK_PRESETS, type RiskCustom } from "@/lib/risk";
 import { setRiskProfileAction } from "@/server/wallet-actions";
 
@@ -15,11 +16,12 @@ const PROFILES: { key: ProfileKey; label: string; desc: string }[] = [
 
 /** Ringkasan ambang (chip) dari sebuah cfg risk. */
 function Thresholds({ cfg }: { cfg: RiskCustom }) {
+  const t = useT();
   const items = [
-    { k: "Stop-loss", v: `${cfg.stopLoss}%` },
-    { k: "Price-stop", v: `-${cfg.priceStop}%` },
-    { k: "TP arm", v: `+${cfg.tpArm}%` },
-    { k: "TP trail", v: `${cfg.tpTrail}pp` },
+    { k: t("Stop-loss"), v: `${cfg.stopLoss}%` },
+    { k: t("Price-stop"), v: `-${cfg.priceStop}%` },
+    { k: t("TP arm"), v: `+${cfg.tpArm}%` },
+    { k: t("TP trail"), v: `${cfg.tpTrail}pp` },
   ];
   return (
     <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -85,6 +87,7 @@ export function RiskCard({
   });
   const [pending, start] = useTransition();
   const [saved, setSaved] = useState(false);
+  const t = useT();
 
   const flash = () => {
     setSaved(true);
@@ -109,10 +112,10 @@ export function RiskCard({
   return (
     <div className="rounded-2xl border border-line/60 p-5">
       <div className="flex items-center justify-between">
-        <h3 className="font-medium">Risk manager</h3>
-        {saved && <span className="text-xs text-emerald-600">Tersimpan ✓</span>}
+        <h3 className="font-medium">{t("Risk manager")}</h3>
+        {saved && <span className="text-xs text-emerald-600">{t("Tersimpan ✓")}</span>}
       </div>
-      <p className="mt-0.5 text-xs text-soft">Seberapa agresif bot potong rugi & ambil untung untuk agent-mu.</p>
+      <p className="mt-0.5 text-xs text-soft">{t("Seberapa agresif bot potong rugi & ambil untung untuk agent-mu.")}</p>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
         {PROFILES.map((p) => (
@@ -125,8 +128,8 @@ export function RiskCard({
               sel === p.key ? "border-ink bg-shade" : "border-line/60 hover:bg-shade"
             }`}
           >
-            <div className="text-sm font-medium">{p.label}</div>
-            <div className="mt-0.5 text-xs text-soft">{p.desc}</div>
+            <div className="text-sm font-medium">{t(p.label)}</div>
+            <div className="mt-0.5 text-xs text-soft">{t(p.desc)}</div>
           </button>
         ))}
       </div>
@@ -136,10 +139,10 @@ export function RiskCard({
       {sel === "custom" && (
         <div className="mt-3">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Stop-loss % (net vs HODL)" value={custom.stopLoss} onChange={(v) => setCustom((c) => ({ ...c, stopLoss: v }))} />
-            <Field label="Price-stop % (drop token)" value={custom.priceStop} onChange={(v) => setCustom((c) => ({ ...c, priceStop: v }))} />
-            <Field label="Take-profit arm % (net)" value={custom.tpArm} onChange={(v) => setCustom((c) => ({ ...c, tpArm: v }))} />
-            <Field label="Take-profit trail (pp)" value={custom.tpTrail} onChange={(v) => setCustom((c) => ({ ...c, tpTrail: v }))} />
+            <Field label={t("Stop-loss % (net vs HODL)")} value={custom.stopLoss} onChange={(v) => setCustom((c) => ({ ...c, stopLoss: v }))} />
+            <Field label={t("Price-stop % (drop token)")} value={custom.priceStop} onChange={(v) => setCustom((c) => ({ ...c, priceStop: v }))} />
+            <Field label={t("Take-profit arm % (net)")} value={custom.tpArm} onChange={(v) => setCustom((c) => ({ ...c, tpArm: v }))} />
+            <Field label={t("Take-profit trail (pp)")} value={custom.tpTrail} onChange={(v) => setCustom((c) => ({ ...c, tpTrail: v }))} />
           </div>
           <button
             type="button"
@@ -147,13 +150,13 @@ export function RiskCard({
             disabled={pending}
             className="mt-3 w-full rounded-lg bg-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
-            {pending ? "Menyimpan…" : "Simpan custom"}
+            {pending ? t("Menyimpan…") : t("Simpan custom")}
           </button>
         </div>
       )}
       <p className="mt-3 text-[11px] text-soft">
-        Stop-loss = keluar saat rugi net. Price-stop = fail-safe dari harga token. TP trail = jarak retrace
-        dari puncak sebelum kunci untung. Default <span className="font-medium">Safe</span>.
+        {t("Stop-loss = keluar saat rugi net. Price-stop = fail-safe dari harga token. TP trail = jarak retrace dari puncak sebelum kunci untung. Default")}{" "}
+        <span className="font-medium">{t("Safe")}</span>.
       </p>
     </div>
   );
