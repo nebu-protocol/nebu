@@ -5,7 +5,7 @@ import { liquidityForAmounts, rangeFromWidth, sqrtRatioX96AtTick } from '../exec
 import { tokenIdFromLogs, wcFor } from '../executor/live.ts'
 import type { DexAdapter } from './adapter.ts'
 import { infinityPoolId } from './pancake-infinity.ts'
-import { encodeParameters } from './pancake-infinity-encode.ts'
+import { resolveParameters } from './pancake-infinity-encode.ts'
 import type { Encoded, PoolRef } from './types.ts'
 
 const NATIVE = '0x0000000000000000000000000000000000000000' as const
@@ -42,7 +42,7 @@ export function toInfinityPoolKey(pool: PoolRef) {
     hooks: pool.hooks as `0x${string}`,
     poolManager: ADDRESSES.clPoolManager,
     fee: pool.fee,
-    parameters: encodeParameters(pool.tick_spacing),
+    parameters: resolveParameters(pool),
   } as const
 }
 

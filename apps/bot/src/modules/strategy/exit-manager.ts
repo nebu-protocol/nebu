@@ -72,6 +72,7 @@ type Row = {
   fee: number
   tick_spacing: number
   hooks: string
+  parameters: string | null
   enc_pk: string
   risk_profile: string | null
   risk_stop_loss: number | null
@@ -91,7 +92,7 @@ export async function run() {
   const positions = db
     .prepare(
       `SELECT p.id, p.wallet, p.pool_id, p.token_id, p.tick_lower, p.tick_upper, p.net_pct, p.peak_net_pct, p.entry_ts, p.entry_cost_eth,
-              po.currency0, po.currency1, po.fee, po.tick_spacing, po.hooks, w.enc_pk,
+              po.currency0, po.currency1, po.fee, po.tick_spacing, po.hooks, po.parameters, w.enc_pk,
               w.risk_profile, w.risk_stop_loss, w.risk_price_stop, w.risk_tp_arm, w.risk_tp_trail
        FROM positions p
        JOIN pools po ON po.pool_id = p.pool_id

@@ -39,6 +39,17 @@ export function encodeParameters(tickSpacing: number): `0x${string}` {
   return `0x${(BigInt(tickSpacing) << 16n).toString(16).padStart(64, '0')}` as `0x${string}`
 }
 
+/**
+ * parameters PoolKey final: pakai raw bytes32 tersimpan (mengandung hook-perms) kalau ada
+ * (WAJIB utk pool ber-hook), else derive dari tickSpacing (no-hook). Salah parameters =
+ * poolId salah = tx revert.
+ */
+export function resolveParameters(pool: PoolRef): `0x${string}` {
+  const p = pool.parameters
+  if (p && /^0x[0-9a-fA-F]{64}$/.test(p)) return p as `0x${string}`
+  return encodeParameters(pool.tick_spacing)
+}
+
 function poolKeyStruct(pool: PoolRef) {
   return {
     currency0: pool.currency0 as `0x${string}`,
@@ -46,7 +57,7 @@ function poolKeyStruct(pool: PoolRef) {
     hooks: pool.hooks as `0x${string}`,
     poolManager: ADDRESSES.clPoolManager,
     fee: pool.fee,
-    parameters: encodeParameters(pool.tick_spacing),
+    parameters: resolveParameters(pool),
   }
 }
 

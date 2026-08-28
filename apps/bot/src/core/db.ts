@@ -216,6 +216,9 @@ export function openDb(path: string = DB_PATH): DatabaseSync {
     'ALTER TABLE wallets ADD COLUMN risk_tp_trail REAL',
     // jumlah token1 (leg non-ETH) untuk aktivitas — human-readable
     'ALTER TABLE executions ADD COLUMN amount_token1 REAL',
+    // Raw bytes32 `parameters` PoolKey Infinity (hook-perms bits[0,16) + tickSpacing bits[16,40)).
+    // WAJIB utk pool ber-HOOK (tickSpacing<<16 saja tak cukup — poolId/PoolKey butuh hook bits).
+    'ALTER TABLE pools ADD COLUMN parameters TEXT',
   ]) {
     try {
       db.exec(stmt)

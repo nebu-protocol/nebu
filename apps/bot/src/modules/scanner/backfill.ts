@@ -34,8 +34,8 @@ export async function run() {
 
   const insert = db.prepare(
     `INSERT OR IGNORE INTO pools
-     (pool_id, currency0, currency1, fee, tick_spacing, hooks, block_number, created_at, tx_hash)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     (pool_id, currency0, currency1, fee, tick_spacing, hooks, parameters, block_number, created_at, tx_hash)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   // ponytail: timestamp diestimasi via interpolasi linear [from..head] (2 request, bukan 1
   // getBlock per pool — RPC publik 429). Galat ~menit. Anchor di `from` (bukan blok 1) biar
@@ -75,6 +75,7 @@ export async function run() {
         p.fee,
         p.tickSpacing,
         p.hooks,
+        p.parameters ?? null,
         Number(l.blockNumber),
         estTs(l.blockNumber),
         l.transactionHash,

@@ -15,7 +15,7 @@ import {
   encodeInfinityMint,
   encodeInfinitySwapFromNative,
   encodeInfinitySwapToNative,
-  encodeParameters,
+  resolveParameters,
 } from './pancake-infinity-encode.ts'
 
 /**
@@ -60,7 +60,7 @@ function tickSpacingFromParameters(parameters: string): number {
  * untuk write; untuk read poolId sudah tersimpan dari discovery.
  */
 export function infinityPoolId(pool: PoolRef): `0x${string}` {
-  const parameters = encodeParameters(pool.tick_spacing)
+  const parameters = resolveParameters(pool)
   return keccak256(
     encodeAbiParameters(
       [
@@ -286,6 +286,7 @@ export const pancakeInfinityAdapter: DexAdapter = {
       fee: Number(a.fee),
       tickSpacing: tickSpacingFromParameters(a.parameters as string),
       hooks: (a.hooks as string).toLowerCase(),
+      parameters: (a.parameters as string).toLowerCase(), // raw — dipakai utk pool ber-hook
     }
   },
 

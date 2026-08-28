@@ -13,6 +13,9 @@ export type PoolRef = {
   fee: number
   tick_spacing: number
   hooks: string
+  /** Infinity: raw bytes32 parameters (hook-perms + tickSpacing). Undefined = no-hook
+   *  (derive tickSpacing<<16). Wajib utk pool ber-hook. Diabaikan Uniswap v4. */
+  parameters?: string | null
 }
 
 /** Harga & tick pool saat ini. */
@@ -69,6 +72,8 @@ export type PoolInit = {
   fee: number
   tickSpacing: number
   hooks: string
+  /** Raw bytes32 parameters (Infinity). Undefined utk Uniswap v4. */
+  parameters?: string
 }
 
 /** State pool untuk snapshot (harga, likuiditas, feeGrowth global). */

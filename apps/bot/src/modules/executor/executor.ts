@@ -76,6 +76,7 @@ type PoolKeyRow = {
   fee: number
   tick_spacing: number
   hooks: string
+  parameters: string | null // Infinity raw bytes32 (hook-perms) — wajib utk pool ber-hook
 }
 
 // Swap-in encoding (ETH->token1) & quote kini lewat DexAdapter (dex.encodeSwapFromNative /
@@ -196,7 +197,7 @@ export async function run() {
   const latestDecisionRows = db
     .prepare(
       `SELECT dc.pool_id, dc.action, dc.size_fraction, dc.width_factor,
-              p.currency0, p.currency1, p.fee, p.tick_spacing, p.hooks
+              p.currency0, p.currency1, p.fee, p.tick_spacing, p.hooks, p.parameters
        FROM decisions dc JOIN pools p ON p.pool_id = dc.pool_id
        WHERE dc.ts = (SELECT MAX(ts) FROM decisions)`,
     )
@@ -263,7 +264,7 @@ export async function run() {
     if (live && account && minEth > 0) {
       const stranded = db
         .prepare(
-          `SELECT DISTINCT e.pool_id, p.currency0, p.currency1, p.fee, p.tick_spacing, p.hooks
+          `SELECT DISTINCT e.pool_id, p.currency0, p.currency1, p.fee, p.tick_spacing, p.hooks, p.parameters
            FROM executions e JOIN pools p ON p.pool_id = e.pool_id
            WHERE e.wallet = ? AND e.kind = 'SWAP_IN' AND e.status IN ('SENT','CONFIRMED')
              AND NOT EXISTS (

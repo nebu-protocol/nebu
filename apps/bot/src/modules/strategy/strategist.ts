@@ -1,3 +1,4 @@
+import { DEX_KIND } from '../../config/index.ts'
 import type { YieldRow } from '../report/yield.ts'
 
 /**
@@ -25,7 +26,14 @@ export const DEFAULT_STRATEGY: StrategyConfig = {
   // 1-2 posisi sampai stack >$100. Env MAX_POOLS untuk naikkan saat fund besar.
   maxPools: Number(process.env.MAX_POOLS ?? 2),
   widthFactor: 1.2,
-  requireNoHook: true,
+  // Pool no-hook: WAJIB di Uniswap v4/Robinhood (hindari hook jahat). Di PancakeSwap
+  // Infinity/BSC pool likuid legit (BNB/USDT dll) pakai HOOK dynamic-fee — no-hook cuma
+  // four.meme fee ~95%/honeypot. Jadi izinkan hook di Infinity (dana dilindungi vault;
+  // gate demand/TVL saring kualitas). Env REQUIRE_NO_HOOK=1 utk paksa no-hook.
+  requireNoHook:
+    process.env.REQUIRE_NO_HOOK != null
+      ? process.env.REQUIRE_NO_HOOK === '1'
+      : DEX_KIND !== 'pancake-infinity',
   // Riset (Amberdata/DeFi-Scientist): LP = short-vol; cuma menang saat token TRENDING
   // NAIK, bleed di downtrend/chop. Jadi entry HANYA token yg tak turun (momentum ≥ 0).
   // Sebelumnya -8 (masih izinkan dump ringan) → sumber utama "PnL turun drastis".

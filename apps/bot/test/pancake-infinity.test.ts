@@ -6,6 +6,7 @@ import {
   encodeInfinitySwapFromNative,
   encodeInfinitySwapToNative,
   encodeParameters,
+  resolveParameters,
 } from '../src/modules/dex/pancake-infinity-encode.ts'
 import { infinityPoolId } from '../src/modules/dex/pancake-infinity.ts'
 import { ADDRESSES, NATIVE } from '../src/config/index.ts'
@@ -23,6 +24,23 @@ const owner = '0x2222222222222222222222222222222222222222' as const
 test('encodeParameters: tickSpacing di bit [16,40)', () => {
   assert.equal(encodeParameters(10), `0x${(10n << 16n).toString(16).padStart(64, '0')}`)
   assert.equal(encodeParameters(60), `0x${(60n << 16n).toString(16).padStart(64, '0')}`)
+})
+
+test('resolveParameters: pakai raw bytes32 tersimpan (hook) / derive dari tickSpacing (no-hook)', () => {
+  const hooked = `0x${((10n << 16n) | 0x0005n).toString(16).padStart(64, '0')}` // tickSpacing 10 + hook-perms
+  assert.equal(resolveParameters({ ...pool, parameters: hooked }), hooked) // pakai raw
+  assert.equal(resolveParameters({ ...pool, parameters: null }), encodeParameters(pool.tick_spacing)) // derive
+  assert.equal(resolveParameters({ ...pool, parameters: 'bad' }), encodeParameters(pool.tick_spacing)) // invalid → derive
+})
+
+test('infinityPoolId: hook-perms bits di parameters mengubah poolId (pool ber-hook ≠ no-hook)', () => {
+  const noHook = infinityPoolId(pool)
+  const hooked = infinityPoolId({
+    ...pool,
+    hooks: '0x1111111111111111111111111111111111111111',
+    parameters: `0x${((10n << 16n) | 0x0005n).toString(16).padStart(64, '0')}`,
+  })
+  assert.notEqual(hooked, noHook)
 })
 
 test('infinityPoolId: deterministik, 32-byte, beda per parameter pool', () => {

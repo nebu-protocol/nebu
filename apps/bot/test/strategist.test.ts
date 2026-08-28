@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import { decide, DEFAULT_STRATEGY, type StrategyConfig } from '../src/modules/strategy/strategist.ts'
 import type { YieldRow } from '../src/modules/report/yield.ts'
 
-const cfg: StrategyConfig = { ...DEFAULT_STRATEGY, minAgeDays: 3, minAprPct: 50, maxPools: 2 }
+// requireNoHook explicit (DEFAULT bergantung DEX_KIND: false di Infinity/BSC) — tes gate hook.
+const cfg: StrategyConfig = { ...DEFAULT_STRATEGY, minAgeDays: 3, minAprPct: 50, maxPools: 2, requireNoHook: true }
 
 function row(overrides: Partial<YieldRow>): YieldRow {
   return {
@@ -146,6 +147,18 @@ test('decide: anti-extension — pump vertikal (>40%) ditolak (ilikuid mean-reve
 test('decide: TVL ambruk — likuiditas ditarik (<-20%) ditolak (sinyal rug)', () => {
   const out = decide([row({ poolId: '0xrug', apr20: 300, momentumPct: 5, tvlTrendPct: -50 })], cfg, { paused: false, held: [] })
   assert.equal(out.length, 0)
+})
+
+test('decide: requireNoHook=false (Infinity/BSC) → pool ber-hook LOLOS (dynamic-fee legit)', () => {
+  const out = decide(
+    [row({ poolId: '0xhookok', hook: '0xdeadbeef', apr20: 300, momentumPct: 10, tvlTrendPct: 20 })],
+    { ...cfg, requireNoHook: false },
+    { paused: false, held: [] },
+  )
+  assert.deepEqual(
+    out.map((d) => d.poolId),
+    ['0xhookok'],
+  )
 })
 
 test('decide: uptrend moderat + TVL naik → lolos ENTER', () => {
