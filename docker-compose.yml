@@ -1,0 +1,33 @@
+# Deploy via Coolify. Nilai env diisi lewat Coolify (interpolasi ${...}).
+x-env: &lp-env
+  NODE_ENV: production
+  LPBOT_KEY_SECRET: ${LPBOT_KEY_SECRET}
+  SESSION_SECRET: ${SESSION_SECRET}
+  TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY}
+  TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY}
+  EXECUTOR_LIVE: ${EXECUTOR_LIVE}
+  CHAIN: ${CHAIN}
+
+services:
+  web:
+    build: .
+    working_dir: /app/apps/backoffice
+    command: ["/app/node_modules/next/dist/bin/next", "start", "-p", "3015"]
+    restart: unless-stopped
+    environment: *lp-env
+    ports:
+      - "127.0.0.1:3015:3015"
+  dapp:
+    build: .
+    working_dir: /app/apps/dapp
+    command: ["/app/node_modules/next/dist/bin/next", "start", "-p", "3016"]
+    restart: unless-stopped
+    environment: *lp-env
+    ports:
+      - "127.0.0.1:3016:3016"
+  collector:
+    build: .
+    working_dir: /app/apps/bot
+    command: ["/app/node_modules/.bin/tsx", "src/index.ts", "collect", "60"]
+    restart: unless-stopped
+    environment: *lp-env
