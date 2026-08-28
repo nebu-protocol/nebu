@@ -1,7 +1,9 @@
 import { openDb } from '../../core/db.ts'
-import { NATIVE } from '../../config/index.ts'
+import { ACTIVE_CHAIN, NATIVE } from '../../config/index.ts'
 
 const YEAR_S = 31_536_000
+// Simbol native chain aktif (BNB di BSC, ETH di Robinhood) — prefix nama pair.
+const NATIVE_SYM = ACTIVE_CHAIN.nativeCurrency.symbol
 
 // Guard anti-noise: annualisasi dari span pendek / pool sepi menghasilkan APR sampah.
 // ponytail: konstanta dulu; jadikan argumen kalau mulai sering di-tweak.
@@ -212,7 +214,7 @@ export function computeYields(
       const l1 = fl.last.liquidity ? Number(BigInt(fl.last.liquidity)) : 0
       const tvlTrendPct = l0 > 0 ? ((l1 - l0) / l0) * 100 : 0
       return {
-        pair: `ETH/${m.sym1 ?? '?'}`,
+        pair: `${NATIVE_SYM}/${m.sym1 ?? '?'}`,
         ageDays: m.created_at ? (nowS - m.created_at) / 86400 : null,
         apr20: wide.aprPct,
         apr5: tight?.aprPct ?? 0,
