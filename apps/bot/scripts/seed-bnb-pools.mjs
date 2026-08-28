@@ -82,5 +82,27 @@ for (const [pair, s0, s1, apr20, apr5, vol, swaps, age] of POOLS) {
   upYield.run(id, pair, age, apr20, apr5, apr20 / 100 / 365, vol, swaps, "", 1440, now);
 }
 
+// Sparkline: seed deret harga (pool_snapshots). Bentuk relatif = mini chart di tabel.
+const Q96 = 2 ** 96;
+db.prepare("DELETE FROM pool_snapshots").run();
+const upSnap = db.prepare(
+  "INSERT INTO pool_snapshots(pool_id,ts,sqrt_price_x96,tick,lp_fee,liquidity,fee_growth0,fee_growth1) VALUES(?,?,?,?,?,?,?,?)",
+);
+const N = 24;
+for (const [pair] of POOLS) {
+  const id = poolId(pair);
+  let h = 0;
+  for (const c of pair) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const net = ((h % 280) - 100) / 1000; // tren bersih −10%..+18% per pool
+  let price = 1;
+  for (let k = 0; k < N; k++) {
+    h = (h * 1103515245 + 12345) >>> 0;
+    const noise = ((h % 1000) / 1000 - 0.5) * 0.02; // ±1% derau
+    price *= 1 + net / N + noise;
+    const sqrtX96 = BigInt(Math.round(Math.sqrt(price) * Q96)).toString();
+    upSnap.run(id, now - (N - k) * 3600, sqrtX96, 0, 2500, "0", "0", "0");
+  }
+}
+
 db.prepare("INSERT OR REPLACE INTO meta(key,value) VALUES('pools_seeded_ts', ?)").run(String(now));
 console.log(`seeded ${TOKENS.length} tokens + ${POOLS.length} BNB pools → ${dbPath}`);
