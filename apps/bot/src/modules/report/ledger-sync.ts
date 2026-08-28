@@ -1,22 +1,27 @@
 import { getAddress, parseAbi } from 'viem'
-import { ADDRESSES } from '../../config/index.ts'
+import { ADDRESSES, CHAIN } from '../../config/index.ts'
 import { client } from '../../core/chain.ts'
 import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
 
-const EXPLORER = 'https://robinhoodchain.blockscout.com'
+// API explorer (format Etherscan-compatible: ?module=account&action=txlist) per chain.
+// BscScan butuh apikey (env EXPLORER_API_KEY / BSCSCAN_API_KEY); Blockscout tidak.
+const EXPLORER_API: Record<string, string> = {
+  bsc: 'https://api.bscscan.com/api',
+  'bsc-testnet': 'https://api-testnet.bscscan.com/api',
+  robinhood: 'https://robinhoodchain.blockscout.com/api',
+}
+const API_BASE = EXPLORER_API[CHAIN] ?? EXPLORER_API.robinhood!
+const API_KEY = process.env.EXPLORER_API_KEY ?? process.env.BSCSCAN_API_KEY ?? ''
 
-// Kontrak bot: ETH balik dari swap/burn lewat kontrak2 ini (biasanya INTERNAL tx,
-// tak masuk txlist normal) — kalau muncul sbg pengirim tx normal, JANGAN hitung deposit.
+// Kontrak bot: native balik dari swap/burn lewat kontrak2 ini (biasanya INTERNAL tx, tak
+// masuk txlist normal) — kalau muncul sbg pengirim tx normal, JANGAN hitung deposit. Chain-aware:
+// semua alamat kontrak non-ZERO dari profil aktif (v4 di Robinhood, Infinity+vault di BSC).
+const ZERO = '0x0000000000000000000000000000000000000000'
 const BOT_CONTRACTS = new Set(
-  [
-    ADDRESSES.universalRouter,
-    ADDRESSES.positionManager,
-    ADDRESSES.poolManager,
-    ADDRESSES.permit2,
-    ADDRESSES.quoter,
-    ADDRESSES.stateView,
-  ].map((a) => a.toLowerCase()),
+  Object.values(ADDRESSES)
+    .map((a) => a.toLowerCase())
+    .filter((a) => a !== ZERO),
 )
 
 type Tx = { from?: string; to?: string; value?: string }
@@ -90,7 +95,7 @@ export async function run() {
     .all() as { address: string; owner: string }[]
   for (const w of wallets) {
     try {
-      const url = `${EXPLORER}/api?module=account&action=txlist&address=${w.address}&sort=asc&page=1&offset=1000`
+      const url = `${API_BASE}?module=account&action=txlist&address=${w.address}&sort=asc&page=1&offset=1000${API_KEY ? `&apikey=${API_KEY}` : ''}`
       const r = await fetch(url)
       const j = (await r.json()) as { result?: Tx[] | string }
       if (!Array.isArray(j.result)) {

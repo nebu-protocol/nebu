@@ -5,6 +5,7 @@ import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
 import { EXIT, MAX_HOLD_HOURS } from '../../config/index.ts'
 import { getDexAdapter } from '../dex/index.ts'
+import { withVault } from '../dex/vault-adapter.ts'
 import { resolveExitCfg } from './risk.ts'
 
 export type ExitCfg = {
@@ -74,6 +75,7 @@ type Row = {
   hooks: string
   parameters: string | null
   enc_pk: string
+  vault_address: string | null
   risk_profile: string | null
   risk_stop_loss: number | null
   risk_price_stop: number | null
@@ -92,7 +94,7 @@ export async function run() {
   const positions = db
     .prepare(
       `SELECT p.id, p.wallet, p.pool_id, p.token_id, p.tick_lower, p.tick_upper, p.net_pct, p.peak_net_pct, p.entry_ts, p.entry_cost_eth,
-              po.currency0, po.currency1, po.fee, po.tick_spacing, po.hooks, po.parameters, w.enc_pk,
+              po.currency0, po.currency1, po.fee, po.tick_spacing, po.hooks, po.parameters, w.enc_pk, w.vault_address,
               w.risk_profile, w.risk_stop_loss, w.risk_price_stop, w.risk_tp_arm, w.risk_tp_trail
        FROM positions p
        JOIN pools po ON po.pool_id = p.pool_id
@@ -126,16 +128,23 @@ export async function run() {
     const account = privateKeyToAccount(decryptSecret(p.enc_pk, secret) as `0x${string}`)
     if (account.address.toLowerCase() !== p.wallet.toLowerCase()) continue
 
+    // Vault-mode: NFT/dana ada di vault → burn/swap WAJIB lewat kontrak vault, atau agent
+    // (bukan pemilik NFT) revert & stop-loss tak pernah jalan. Native hasil exit balik ke vault.
+    const vault =
+      p.vault_address && /^0x[0-9a-fA-F]{40}$/.test(p.vault_address) ? (p.vault_address as `0x${string}`) : null
+    const walletDex = vault ? withVault(dex, vault) : dex
+    const fundAddr = (vault ?? account.address) as `0x${string}`
+
     const now = Math.floor(Date.now() / 1000)
-    // Saldo SEBELUM exit → utk hitung ETH nyata yg balik (Δ saldo, sudah net gas+slippage).
+    // Saldo SEBELUM exit di fundAddr (vault/agent) → utk hitung native nyata yg balik (Δ saldo).
     let balBefore: bigint | null = null
     try {
-      balBefore = await client.getBalance({ address: account.address })
+      balBefore = await client.getBalance({ address: fundAddr })
     } catch {
       /* tak apa — fallback ke mark */
     }
     try {
-      const b = await dex.burn({
+      const b = await walletDex.burn({
         account,
         tokenId: BigInt(p.token_id),
         currency0: p.currency0 as `0x${string}`,
@@ -146,9 +155,9 @@ export async function run() {
         b.status === 'success' ? 'CONFIRMED' : 'FAILED', `auto-exit: ${reason}`)
       if (b.status !== 'success') continue
       db.prepare(`UPDATE positions SET status = 'CLOSED', exit_ts = ? WHERE id = ?`).run(now, p.id)
-      const s = await dex.swapToNative({
+      const s = await walletDex.swapToNative({
         account,
-        pool: p, // punya currency0/1/fee/tick_spacing/hooks
+        pool: p, // punya currency0/1/fee/tick_spacing/hooks/parameters
         deadline: BigInt(now + 600),
       })
       if (s)
@@ -158,7 +167,7 @@ export async function run() {
       // terwujud (exit token tipis = slippage). Bikin edge/win-rate jujur (cocok GMGN).
       if (balBefore != null && p.entry_cost_eth && p.entry_cost_eth > 0) {
         try {
-          const balAfter = await client.getBalance({ address: account.address })
+          const balAfter = await client.getBalance({ address: fundAddr })
           const recovered = Number(balAfter - balBefore) / 1e18
           const realizedNet = ((recovered - p.entry_cost_eth) / p.entry_cost_eth) * 100
           db.prepare('UPDATE positions SET exit_value_eth = ?, net_pct = ? WHERE id = ?').run(recovered, realizedNet, p.id)

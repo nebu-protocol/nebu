@@ -2,7 +2,8 @@ import { privateKeyToAccount } from 'viem/accounts'
 import { decryptSecret } from '../../core/crypto.ts'
 import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
-import { burnLive, swapToEthLive } from '../executor/live.ts'
+import { getDexAdapter } from '../dex/index.ts'
+import { withVault } from '../dex/vault-adapter.ts'
 
 type PoolKeyRow = {
   currency0: string
@@ -10,13 +11,18 @@ type PoolKeyRow = {
   fee: number
   tick_spacing: number
   hooks: string
+  parameters: string | null // Infinity: raw bytes32 (hook-perms) — wajib utk pool ber-hook
 }
 
 /**
- * Tutup posisi LP milik owner (burn + swap token1→ETH balik). Live-only.
+ * Tutup posisi LP milik owner (burn + swap token1→native balik). Live-only.
  *   close <owner>            → tutup SEMUA posisi OPEN
  *   close <owner> <poolId>   → tutup posisi 1 pool saja
  * Dipakai dapp (spawn) untuk tombol "Close LP" & "withdraw + cabut semua LP".
+ *
+ * Lewat DexAdapter (chain aktif) + withVault (kalau wallet punya vault) — BUKAN jalur
+ * live v4 lama (yang di BSC menembak alamat ZERO → tx ke 0x0 "sukses" tanpa revert →
+ * posisi ditandai CLOSED padahal NFT tak pernah di-burn = dana nyangkut).
  */
 export async function run(args: string[]) {
   const owner = (args[0] ?? '').toLowerCase()
@@ -26,13 +32,18 @@ export async function run(args: string[]) {
   if (!secret) throw new Error('LPBOT_KEY_SECRET tidak di-set')
 
   const db = openDb()
-  const w = db.prepare('SELECT address, enc_pk FROM wallets WHERE lower(owner) = ?').get(owner) as
-    | { address: string; enc_pk: string }
+  const w = db.prepare('SELECT address, enc_pk, vault_address FROM wallets WHERE lower(owner) = ?').get(owner) as
+    | { address: string; enc_pk: string; vault_address: string | null }
     | undefined
   if (!w) throw new Error('close: tidak ada agent wallet untuk owner ini')
   const account = privateKeyToAccount(decryptSecret(w.enc_pk, secret) as `0x${string}`)
   if (account.address.toLowerCase() !== w.address.toLowerCase())
     throw new Error('close: address decrypt tak cocok')
+
+  // Vault-mode: NFT/dana ada di vault → semua write LP lewat kontrak vault (agent sign saja).
+  const dex = getDexAdapter()
+  const vault = w.vault_address && /^0x[0-9a-fA-F]{40}$/.test(w.vault_address) ? (w.vault_address as `0x${string}`) : null
+  const walletDex = vault ? withVault(dex, vault) : dex
 
   const positions = (
     onlyPool
@@ -63,14 +74,14 @@ export async function run(args: string[]) {
   for (const p of positions) {
     const now = Math.floor(Date.now() / 1000)
     const pool = db
-      .prepare('SELECT currency0, currency1, fee, tick_spacing, hooks FROM pools WHERE pool_id = ?')
+      .prepare('SELECT currency0, currency1, fee, tick_spacing, hooks, parameters FROM pools WHERE pool_id = ?')
       .get(p.pool_id) as PoolKeyRow | undefined
     if (!pool) {
       log(`close: pool ${p.pool_id.slice(0, 10)} tak ditemukan — skip`)
       continue
     }
     try {
-      const b = await burnLive({
+      const b = await walletDex.burn({
         account,
         tokenId: BigInt(p.token_id),
         currency0: pool.currency0 as `0x${string}`,
@@ -85,11 +96,11 @@ export async function run(args: string[]) {
       }
       db.prepare(`UPDATE positions SET status = 'CLOSED', exit_ts = ? WHERE id = ?`).run(now, p.id)
       log(`close BURN ${b.hash} pos#${p.id}`)
-      // token1 kembali → swap balik ke ETH
-      const s = await swapToEthLive({ account, pool, deadline: BigInt(now + 600) })
+      // token1 kembali → swap balik ke native (ETH/BNB)
+      const s = await walletDex.swapToNative({ account, pool, deadline: BigInt(now + 600) })
       if (s)
         record.run(now, w.address, p.pool_id, 'SWAP_OUT', Number(s.ethOut) / 1e18, s.hash,
-          s.status === 'success' ? 'CONFIRMED' : 'FAILED', 'token1 -> ETH (manual close)')
+          s.status === 'success' ? 'CONFIRMED' : 'FAILED', 'token1 -> native (manual close)')
       log(`close SWAP_OUT ${s?.status ?? 'skip'} ${s?.hash ?? ''}`)
     } catch (e) {
       const msg = String(e)

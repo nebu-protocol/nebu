@@ -1,14 +1,15 @@
-import { createWalletClient, http } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { client } from '../../core/chain.ts'
 import { decryptSecret } from '../../core/crypto.ts'
 import { openDb } from '../../core/db.ts'
 import { log } from '../../core/util.ts'
-import { robinhoodChain, RPC_URL } from '../../config/index.ts'
+import { ACTIVE_CHAIN } from '../../config/index.ts'
+import { wcFor } from '../executor/live.ts'
 
-// Sisakan sedikit ETH untuk gas transfer (L2 murah — transfer ~21k gas).
-// ponytail: reserve tetap 0.0002 ETH; kalibrasi kalau gasPrice chain naik.
-const GAS_RESERVE_WEI = 2n * 10n ** 14n // 0.0002 ETH
+const NATIVE_SYM = ACTIVE_CHAIN.nativeCurrency.symbol
+// Sisakan sedikit native untuk gas transfer (transfer ~21k gas).
+// ponytail: reserve tetap 0.0002; kalibrasi kalau gasPrice chain naik.
+const GAS_RESERVE_WEI = 2n * 10n ** 14n // 0.0002 native
 
 /**
  * Jumlah wei yang boleh dikirim: eksplisit (ETH) atau semua saldo dikurangi reserve gas.
@@ -60,10 +61,10 @@ export async function run(args: string[]) {
     return
   }
 
-  const wc = createWalletClient({ account, chain: robinhoodChain, transport: http(RPC_URL) })
+  const wc = wcFor(account) // wallet client chain aktif (BSC/Robinhood) — bukan hardcode Robinhood
   const hash = await wc.sendTransaction({ to: owner as `0x${string}`, value: sendWei })
   record.run(now, w.address, Number(sendWei) / 1e18, hash, 'SENT', `to owner ${owner.slice(0, 10)}`)
-  log(`withdraw SENT ${hash} — ${Number(sendWei) / 1e18} ETH -> ${owner}`)
+  log(`withdraw SENT ${hash} — ${Number(sendWei) / 1e18} ${NATIVE_SYM} -> ${owner}`)
   const receipt = await client.waitForTransactionReceipt({ hash })
   record.run(now, w.address, Number(sendWei) / 1e18, hash,
     receipt.status === 'success' ? 'CONFIRMED' : 'FAILED', `block ${receipt.blockNumber}`)

@@ -106,6 +106,7 @@ export function withVault(base: DexAdapter, vault: `0x${string}`): DexAdapter {
           args: [poolKey, tickLower, tickUpper, L, opts.amount0Wei, amount1],
         })
       let data: `0x${string}` | null = null
+      let chosenL = raw // L yg benar-benar di-mint (setelah haircut) — utk dicatat di positions
       let last: unknown
       for (const hc of [99n, 98n, 96n, 92n, 85n]) {
         const L = (raw * hc) / 100n
@@ -114,6 +115,7 @@ export function withVault(base: DexAdapter, vault: `0x${string}`): DexAdapter {
         try {
           await client.call({ account: opts.account.address, to: vault, data: d })
           data = d
+          chosenL = L
           break
         } catch (e) {
           last = e
@@ -127,7 +129,7 @@ export function withVault(base: DexAdapter, vault: `0x${string}`): DexAdapter {
         tokenId: tokenIdFromLogs(receipt.logs, ADDRESSES.clPositionManager), // NFT di-mint ke vault
         tickLower,
         tickUpper,
-        liquidity: raw,
+        liquidity: chosenL,
         amount1,
         status: receipt.status,
       }
