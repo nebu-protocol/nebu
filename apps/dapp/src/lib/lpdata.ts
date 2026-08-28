@@ -1,6 +1,8 @@
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+import { RPC_URL } from "./chain";
+
 // Baca DB bot LP (read-only), sama seperti backoffice. Semua math tetap di bot.
 const DB_PATH = process.env.LPBOT_DB_PATH ?? resolve(process.cwd(), "../../data/lp.db");
 
@@ -665,7 +667,7 @@ export function getSystemStatus(): SystemStatus {
 
 /** Cek RPC chain: getBlockNumber + latensi. Server-side (async). */
 export async function checkRpc(): Promise<{ ok: boolean; block: number | null; ms: number }> {
-  const rpc = process.env.ROBINHOOD_RPC_URL ?? "https://rpc.mainnet.chain.robinhood.com";
+  const rpc = RPC_URL;
   const t0 = Date.now();
   try {
     const res = await fetch(rpc, {
@@ -683,7 +685,7 @@ export async function checkRpc(): Promise<{ ok: boolean; block: number | null; m
 
 export async function getBalanceEth(address: string): Promise<number | null> {
   if (!/^0x[0-9a-fA-F]{40}$/.test(address)) return null;
-  const rpc = process.env.ROBINHOOD_RPC_URL ?? "https://rpc.mainnet.chain.robinhood.com";
+  const rpc = RPC_URL;
   try {
     const res = await fetch(rpc, {
       method: "POST",
