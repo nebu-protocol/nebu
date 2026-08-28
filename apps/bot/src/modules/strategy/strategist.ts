@@ -12,6 +12,7 @@ export type StrategyConfig = {
   maxPools: number
   widthFactor: number // lebar range posisi (1.2 = ±~20%)
   requireNoHook: boolean
+  maxStaticFeePpm: number // tolak pool fee-statis ekstrem (honeypot four.meme ~95%); dynamic-fee dikecualikan
   momentumMinPct: number // tolak entry kalau harga token turun > ini (hindari LP token dump)
   momentumMaxPct: number // tolak entry kalau sudah pump vertikal > ini (mean-revert → beli puncak)
   tvlTrendMinPct: number // tolak entry kalau TVL turun > ini (likuiditas ditarik / rug)
@@ -34,6 +35,10 @@ export const DEFAULT_STRATEGY: StrategyConfig = {
     process.env.REQUIRE_NO_HOOK != null
       ? process.env.REQUIRE_NO_HOOK === '1'
       : DEX_KIND !== 'pancake-infinity',
+  // Honeypot four.meme: fee STATIS ~85-96% (LP terjebak — exit kena fee gila, APR "juta %"
+  // artefak). Default 100_000 (10%): tolak pool statis di atasnya; pool dynamic-fee (bit
+  // 0x800000, mis. BNB/CAKE) dikecualikan (fee nyata dari hook, wajar). Env MAX_STATIC_FEE_PPM.
+  maxStaticFeePpm: Number(process.env.MAX_STATIC_FEE_PPM ?? 100_000),
   // Riset (Amberdata/DeFi-Scientist): LP = short-vol; cuma menang saat token TRENDING
   // NAIK, bleed di downtrend/chop. Jadi entry HANYA token yg tak turun (momentum ≥ 0).
   // Sebelumnya -8 (masih izinkan dump ringan) → sumber utama "PnL turun drastis".
@@ -64,8 +69,14 @@ export type Decision = {
   reason: string
 }
 
+const DYNAMIC_FEE_FLAG = 0x800000 // Infinity: fee dgn bit ini = dynamic-fee (nilai nyata dari hook)
+
 function passesGates(r: YieldRow, cfg: StrategyConfig): string | null {
   if (cfg.requireNoHook && r.hook !== '-') return `hook ${r.hook} di luar whitelist`
+  // Honeypot four.meme: fee STATIS ekstrem (~95%) → LP terjebak (exit kena fee gila; APR "juta %"
+  // artefak). Pool dynamic-fee dikecualikan (fee wajar dari hook).
+  if ((r.fee & DYNAMIC_FEE_FLAG) === 0 && r.fee > cfg.maxStaticFeePpm)
+    return `fee statis ${(r.fee / 1e4).toFixed(1)}% > ${(cfg.maxStaticFeePpm / 1e4).toFixed(1)}% (honeypot)`
   if ((r.ageDays ?? 0) < cfg.minAgeDays) return `umur ${(r.ageDays ?? 0).toFixed(1)}d < ${cfg.minAgeDays}d`
   // Hurdle LVR (Lambert/Milionis): PnL LP ≈ fee − LVR, LVR ∝ σ². widthFactor sudah
   // skala dgn σ (autoWidthFactor), jadi pool makin volatile butuh APR makin tinggi

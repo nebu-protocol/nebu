@@ -18,6 +18,7 @@ function row(overrides: Partial<YieldRow>): YieldRow {
     hook: '-',
     spanMin: 60,
     poolId: '0xok',
+    fee: 3000, // 0.3% — normal (bukan honeypot)
     widthFactor: 1.2,
     momentumPct: 0,
     tvlTrendPct: 5,
@@ -158,6 +159,26 @@ test('decide: requireNoHook=false (Infinity/BSC) → pool ber-hook LOLOS (dynami
   assert.deepEqual(
     out.map((d) => d.poolId),
     ['0xhookok'],
+  )
+})
+
+test('decide: honeypot four.meme (fee statis ~95%) ditolak; dynamic-fee lolos', () => {
+  // fee statis 955873 = 95.6% → di atas maxStaticFeePpm (10%) → tolak
+  const honey = decide(
+    [row({ poolId: '0xhoney', fee: 955873, apr20: 5000, momentumPct: 10, tvlTrendPct: 20 })],
+    cfg,
+    { paused: false, held: [] },
+  )
+  assert.equal(honey.length, 0)
+  // dynamic-fee (bit 0x800000) TAK kena gate fee walau nilainya besar (fee nyata dari hook)
+  const dyn = decide(
+    [row({ poolId: '0xdyn', fee: 0x800000, apr20: 300, momentumPct: 10, tvlTrendPct: 20 })],
+    cfg,
+    { paused: false, held: [] },
+  )
+  assert.deepEqual(
+    dyn.map((d) => d.poolId),
+    ['0xdyn'],
   )
 })
 

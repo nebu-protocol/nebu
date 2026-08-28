@@ -60,6 +60,7 @@ type PoolMeta = {
   pool_id: string
   currency0: string
   hooks: string
+  fee: number
   created_at: number | null
   sym1: string | null
   liquidity: string | null
@@ -79,6 +80,8 @@ export type YieldRow = {
   hook: string
   spanMin: number
   poolId: string
+  /** Fee pool (unit 1e-6; mis. 3000=0.3%). Bit 0x800000 = dynamic-fee. Gate honeypot four.meme (~95%). */
+  fee: number
   /** Lebar range auto dari volatilitas pool (1.2 = ±~20%). Dipakai strategist. */
   widthFactor: number
   /** Perubahan harga token (%) sepanjang window snapshot — filter momentum entry. */
@@ -164,7 +167,7 @@ export function computeYields(
 
   const metas = db
     .prepare(
-      `SELECT p.pool_id, p.currency0, p.hooks, p.created_at, t1.symbol AS sym1,
+      `SELECT p.pool_id, p.currency0, p.hooks, p.fee, p.created_at, t1.symbol AS sym1,
               s.liquidity, w.swap_count, w.volume0, (w.to_ts - w.from_ts) AS window_s
        FROM pools p
        LEFT JOIN tokens t1 ON t1.address = p.currency1
@@ -224,6 +227,7 @@ export function computeYields(
         hook: m.hooks === NATIVE ? '-' : m.hooks.slice(0, 10),
         spanMin: (fl.last.ts - fl.first.ts) / 60,
         poolId: m.pool_id,
+        fee: m.fee,
         widthFactor: width,
         momentumPct,
         tvlTrendPct,
