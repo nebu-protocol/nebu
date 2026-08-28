@@ -19,7 +19,7 @@ function hash(s: string): number {
  * (/api/token-logo, "selalu cek" tiap token pools dari Blockscout/DexScreener). Tak
  * pernah ada gambar rusak/blank — kalau semua gagal, avatar dasar yang tampil.
  */
-const EXPLORER = "https://robinhoodchain.blockscout.com";
+import { EXPLORER_URL as EXPLORER } from "@/lib/chain";
 
 export function TokenIcon({
   symbol,

@@ -14,6 +14,8 @@ export type ChainInfo = {
   kind: ChainKind;
   /** RPC HTTP untuk read on-chain (health check, saldo). Chain-aware, bukan hardcode Robinhood. */
   rpc: string;
+  /** Block explorer (base URL, tanpa trailing slash) untuk link tx/token/address. */
+  explorer: string;
 };
 
 const CHAINS: Record<ChainKind, ChainInfo> = {
@@ -23,6 +25,7 @@ const CHAINS: Record<ChainKind, ChainInfo> = {
     native: "BNB",
     kind: "bsc",
     rpc: process.env.NEXT_PUBLIC_BSC_RPC_URL ?? "https://bsc-dataseed.bnbchain.org",
+    explorer: "https://bscscan.com",
   },
   robinhood: {
     id: 4663,
@@ -30,6 +33,7 @@ const CHAINS: Record<ChainKind, ChainInfo> = {
     native: "ETH",
     kind: "robinhood",
     rpc: process.env.ROBINHOOD_RPC_URL ?? "https://rpc.mainnet.chain.robinhood.com",
+    explorer: "https://robinhoodchain.blockscout.com",
   },
 };
 
@@ -39,3 +43,5 @@ export const ACTIVE_CHAIN: ChainInfo = CHAINS[KEY] ?? CHAINS.bsc;
 export const NATIVE = ACTIVE_CHAIN.native;
 /** RPC HTTP chain aktif (read on-chain di server: checkRpc, getBalanceEth). */
 export const RPC_URL = ACTIVE_CHAIN.rpc;
+/** Block explorer chain aktif (link tx/token/address). BscScan di BSC, Blockscout di Robinhood. */
+export const EXPLORER_URL = ACTIVE_CHAIN.explorer;

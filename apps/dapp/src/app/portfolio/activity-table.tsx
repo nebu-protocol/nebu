@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { TokenIcon } from "@/components/token-icon";
-import { NATIVE } from "@/lib/chain";
+import { EXPLORER_URL, NATIVE } from "@/lib/chain";
 import { useT } from "@/lib/i18n-client";
 import type { Activity } from "@/lib/lpdata";
 
@@ -96,7 +96,7 @@ function FlowIcons({
   );
 }
 
-const EXPLORER = "https://robinhoodchain.blockscout.com";
+const EXPLORER = EXPLORER_URL;
 const midTruncate = (s: string) => `${s.slice(0, 6)}…${s.slice(-4)}`; // 4 depan, 2 belakang
 const ACTIONS = ["ALL", "SWAP_IN", "SWAP_OUT", "MINT", "BURN", "WITHDRAW"] as const;
 const STATUSES = ["ALL", "CONFIRMED", "SENT", "FAILED"] as const;
@@ -236,7 +236,7 @@ export function ActivityTable({ rows, ethUsd }: { rows: Activity[]; ethUsd: numb
                       "—"
                     ) : (
                       <span
-                        title={`${fmtEth(a.amountEth)} ETH${a.tokenAmount !== null ? ` · ${fmtTok(a.tokenAmount)} ${a.tokenSym ?? ""}` : ""}`}
+                        title={`${fmtEth(a.amountEth)} ${NATIVE}${a.tokenAmount !== null ? ` · ${fmtTok(a.tokenAmount)} ${a.tokenSym ?? ""}` : ""}`}
                       >
                         {dir === "out" ? "+" : dir === "in" ? "−" : ""}
                         {ethUsd ? fmtUsd(a.amountEth * ethUsd) : `${fmtEth(a.amountEth)} ETH`}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { GeneratedAvatar } from "@/components/generated-avatar";
 import { Header } from "@/components/layout/header";
+import { NATIVE } from "@/lib/chain";
 import { getT } from "@/lib/i18n-server";
 import { getLeaderboard, getLpStats } from "@/lib/lpdata";
 
@@ -26,7 +27,7 @@ export default async function LeaderboardPage() {
       <main className="mx-auto max-w-4xl px-4 py-8">
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">{t("Leaderboard")}</h1>
         <p className="mb-6 text-sm text-soft">
-          Peringkat wallet berdasarkan rata-rata net vs HODL (posisi OPEN, PnL on-chain nyata).
+          {t("Peringkat wallet berdasarkan rata-rata net vs HODL (posisi OPEN, PnL on-chain nyata).")}
         </p>
 
         <div className="overflow-x-auto rounded-2xl border border-line/60">
@@ -64,11 +65,11 @@ export default async function LeaderboardPage() {
                     {pct(r.avgNet)}
                   </td>
                   <td className={`px-4 py-3 text-right ${r.pnlEth >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                    {ethUsd ? `${r.pnlEth >= 0 ? "+" : ""}${fmtUsd(r.pnlEth * ethUsd)}` : `${r.pnlEth.toFixed(6)} ETH`}
+                    {ethUsd ? `${r.pnlEth >= 0 ? "+" : ""}${fmtUsd(r.pnlEth * ethUsd)}` : `${r.pnlEth.toFixed(6)} ${NATIVE}`}
                   </td>
                   <td className="px-4 py-3 text-right">{r.positions}</td>
                   <td className="px-4 py-3 text-right">
-                    {ethUsd ? fmtUsd(r.deployedEth * ethUsd) : `${r.deployedEth.toFixed(6)} ETH`}
+                    {ethUsd ? fmtUsd(r.deployedEth * ethUsd) : `${r.deployedEth.toFixed(6)} ${NATIVE}`}
                   </td>
                 </tr>
               ))}

@@ -1,21 +1,26 @@
 import { NextResponse } from "next/server";
 
+import { EXPLORER_URL } from "@/lib/chain";
+
 export const runtime = "nodejs";
 export const revalidate = 604800; // 7 hari
 
 /** Cari URL logo token dari sumber publik (server-side; CSP client tak kena). */
 async function findLogoUrl(addr: string): Promise<string | null> {
-  // 1. Blockscout (explorer chain) — sumber paling relevan utk Robinhood Chain.
-  try {
-    const r = await fetch(`https://robinhoodchain.blockscout.com/api/v2/tokens/${addr}`, {
-      next: { revalidate: 86400 },
-    });
-    if (r.ok) {
-      const j = (await r.json()) as { icon_url?: string | null };
-      if (j.icon_url) return j.icon_url;
+  // 1. Blockscout API — HANYA chain berbasis Blockscout (mis. Robinhood). BscScan tak punya
+  //    endpoint /api/v2/tokens, jadi di BSC langsung ke DexScreener (yang memang lintas-chain).
+  if (EXPLORER_URL.includes("blockscout")) {
+    try {
+      const r = await fetch(`${EXPLORER_URL}/api/v2/tokens/${addr}`, {
+        next: { revalidate: 86400 },
+      });
+      if (r.ok) {
+        const j = (await r.json()) as { icon_url?: string | null };
+        if (j.icon_url) return j.icon_url;
+      }
+    } catch {
+      /* lanjut sumber lain */
     }
-  } catch {
-    /* lanjut sumber lain */
   }
   // 2. DexScreener — sebagian pair punya info.imageUrl.
   try {

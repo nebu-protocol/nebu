@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { RPC_URL } from "./chain";
+import { NATIVE, RPC_URL } from "./chain";
 
 // Baca DB bot LP (read-only), sama seperti backoffice. Semua math tetap di bot.
 const DB_PATH = process.env.LPBOT_DB_PATH ?? resolve(process.cwd(), "../../data/lp.db");
@@ -246,7 +246,7 @@ export function getWalletRealPositions(address: string): RealPosition[] {
     return (
       getDb()
         .prepare(
-          `SELECT COALESCE(pp.pair, y.pair, 'ETH/' || substr(pos.pool_id,3,6)) AS pair,
+          `SELECT COALESCE(pp.pair, y.pair, '${NATIVE}/' || substr(pos.pool_id,3,6)) AS pair,
                   pos.pool_id, pl.currency1 AS token_addr,
                   pos.tick_lower, pos.tick_upper, pos.status, pos.entry_ts,
                   pos.net_pct, pos.fees_pct, pos.il_pct
@@ -598,7 +598,7 @@ export function getPoolsTable(limit = 30): PoolRow[] {
       return {
         poolId: r.pool_id,
         pair: r.pair,
-        sym0: r.sym0 ?? "ETH",
+        sym0: r.sym0 ?? NATIVE,
         sym1: r.sym1 ?? "?",
         address: r.addr1,
         apr20: r.apr20,

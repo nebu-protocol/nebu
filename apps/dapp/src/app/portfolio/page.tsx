@@ -4,6 +4,7 @@ import { Header } from "@/components/layout/header";
 import { PortfolioChart } from "@/components/portfolio-chart";
 import { Sparkline } from "@/components/sparkline";
 import { TokenIcon } from "@/components/token-icon";
+import { NATIVE } from "@/lib/chain";
 import {
   getBalanceEth,
   getBotStatus,
@@ -57,7 +58,7 @@ export default async function PortfolioPage() {
         )}
         {siwe ? <ManagedView address={siwe} /> : <PortfolioClient />}
         <p className="mt-4 text-xs text-soft">
-          PnL untuk wallet-mu. Net vs HODL — simulasi, bukan nasihat finansial.
+          {t("PnL untuk wallet-mu. Net vs HODL — simulasi, bukan nasihat finansial.")}
         </p>
       </main>
     </>
@@ -177,7 +178,7 @@ async function ManagedView({ address }: { address: string }) {
         {/* Metrik ringkas — dipindah ke antara status bot & risk manager. */}
         <div className="rounded-2xl border border-line/60 p-5">
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Metric label={t("Deployed")} value={deployedUsd === null ? `${fmtEth(deployedEth)} ETH` : fmtUsd(deployedUsd)} />
+            <Metric label={t("Deployed")} value={deployedUsd === null ? `${fmtEth(deployedEth)} ${NATIVE}` : fmtUsd(deployedUsd)} />
             <Metric label={t("Open positions")} value={String(realPnl?.positions ?? 0)} />
             <Metric label={t("Net vs HODL")} value={avgNet === null ? "—" : pct(avgNet)} tone={avgNet} />
             <Metric
@@ -185,7 +186,7 @@ async function ManagedView({ address }: { address: string }) {
               value={
                 pnlIsReal && pnlEth !== null
                   ? pnlUsd === null
-                    ? `${pnlEth >= 0 ? "+" : ""}${fmtEth(pnlEth)} ETH`
+                    ? `${pnlEth >= 0 ? "+" : ""}${fmtEth(pnlEth)} ${NATIVE}`
                     : `${pnlEth >= 0 ? "+" : ""}${fmtUsd(pnlUsd)}`
                   : "—"
               }

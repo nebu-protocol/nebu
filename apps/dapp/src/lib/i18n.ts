@@ -199,6 +199,13 @@ export const EN_DICT: Record<string, string> = {
   "Rata-rata untung ÷ rugi posisi tertutup. Target ≥ 4.2:1.":
     "Average win ÷ loss on closed positions. Target ≥ 4.2:1.",
   Jumlah: "Amount",
+  "Potong rugi cepat, kunci untung awal": "Cut losses fast, lock in gains early",
+  "Beri ruang, ride pemenang lebih jauh": "Give room, ride winners further",
+  "Atur ambang sendiri": "Set your own thresholds",
+  "PnL untuk wallet-mu. Net vs HODL — simulasi, bukan nasihat finansial.":
+    "PnL for your wallet. Net vs HODL — simulation, not financial advice.",
+  "Peringkat wallet berdasarkan rata-rata net vs HODL (posisi OPEN, PnL on-chain nyata).":
+    "Wallets ranked by average net vs HODL (OPEN positions, real on-chain PnL).",
   "On-chain nyata · Net vs HODL = nilai posisi sekarang vs modal awal.":
     "Real on-chain · Net vs HODL = current position value vs initial deposit.",
   "dari saldo agent": "from agent balance",
