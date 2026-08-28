@@ -12,6 +12,7 @@ export interface AgentMeta {
   category: AgentCategory;
   status: AgentStatus;
   emoji: string;
+  image: string; // ikon art (public/agents/*.png)
   description: string;
   /** Izin yang di-grant saat hire (scoped vault session). Inti "kerja tapi gabisa narik". */
   permissions: string[];
@@ -44,6 +45,7 @@ export const AGENTS: AgentMeta[] = [
     category: "rebalancing",
     status: "live",
     emoji: "⚖️",
+    image: "/agents/nebu-lp.png",
     description:
       "Provides concentrated liquidity on BNB Chain and keeps it in range as price moves — picking pools by real fee momentum, dodging honeypots, and exiting on discipline. Every position and its realized PnL is on-chain verifiable.",
     permissions: ["Add / remove liquidity on PancakeSwap Infinity", "Swap only within a vetted token allowlist", NON_CUSTODIAL],
@@ -56,6 +58,7 @@ export const AGENTS: AgentMeta[] = [
     category: "yield",
     status: "beta",
     emoji: "🌾",
+    image: "/agents/nebu-yield.png",
     description:
       "Scans BNB yield venues, allocates to the best risk-adjusted option, and auto-compounds. Rebalances when a better source appears. You keep custody — the agent only moves funds between whitelisted venues.",
     permissions: ["Stake / unstake in whitelisted yield venues", "Claim & compound rewards", NON_CUSTODIAL],
@@ -68,6 +71,7 @@ export const AGENTS: AgentMeta[] = [
     category: "grid",
     status: "soon",
     emoji: "🔲",
+    image: "/agents/nebu-grid.png",
     description:
       "Places a ladder of buy/sell orders inside a range on PancakeSwap and works it as price oscillates — turning volatility into realized gains, hands-free. Range and budget are yours to set.",
     permissions: ["Swap within the configured grid range", "Respect your per-order and total budget caps", NON_CUSTODIAL],
@@ -80,6 +84,7 @@ export const AGENTS: AgentMeta[] = [
     category: "health",
     status: "soon",
     emoji: "🛡️",
+    image: "/agents/nebu-guardian.png",
     description:
       "Monitors your lending health factor on BNB Chain and, when it nears the danger zone, repays or tops up collateral automatically — so a market wick doesn't liquidate you. Alerts you every step.",
     permissions: ["Repay debt / add collateral on your Venus position", "Trigger only below your health-factor threshold", NON_CUSTODIAL],

@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 
-import { PoolCard } from "@/components/pool-card";
+import { MiniLine } from "@/components/mini-line";
+import { TokenIcon } from "@/components/token-icon";
 import type { PoolRow } from "@/lib/lpdata";
 
 const SORTS = [
@@ -14,7 +15,18 @@ const SORTS = [
 
 type SortKey = (typeof SORTS)[number]["key"];
 
-/** Explorer pool ala launchpad: search + sort tabs → grid padat. */
+const kfmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K` : `${Math.round(n)}`);
+
+function Chg({ v }: { v: number | null }) {
+  if (v === null) return <span className="text-soft">—</span>;
+  return (
+    <span className={v >= 0 ? "text-emerald-600" : "text-red-600"}>
+      {v >= 0 ? "▲" : "▼"} {Math.abs(v).toFixed(2)}%
+    </span>
+  );
+}
+
+/** Explorer pool ala launchpad — tabel + search + sort. Data BNB real. */
 export function PoolsExplorer({ pools }: { pools: PoolRow[] }) {
   const [sort, setSort] = useState<SortKey>("apr");
   const [q, setQ] = useState("");
@@ -57,12 +69,53 @@ export function PoolsExplorer({ pools }: { pools: PoolRow[] }) {
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-        {rows.map((p) => (
-          <PoolCard key={p.poolId} p={p} />
-        ))}
+
+      <div className="overflow-x-auto rounded-2xl border border-line/60">
+        <table className="w-full text-sm">
+          <thead className="border-b border-line/60 text-soft">
+            <tr>
+              <th className="hidden px-4 py-3 text-left font-medium sm:table-cell">#</th>
+              <th className="px-4 py-3 text-left font-medium">Pool</th>
+              <th className="px-4 py-3 text-right font-medium">APR</th>
+              <th className="hidden px-4 py-3 text-right font-medium sm:table-cell">Δ recent</th>
+              <th className="hidden px-4 py-3 text-right font-medium md:table-cell">Vol (BNB)</th>
+              <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">Swaps/h</th>
+              <th className="hidden px-4 py-3 text-right font-medium md:table-cell">Trend</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-soft">
+                  No pools match “{q}”.
+                </td>
+              </tr>
+            )}
+            {rows.map((p, i) => (
+              <tr key={p.poolId} className="border-t border-line/60 hover:bg-shade/40">
+                <td className="hidden px-4 py-3 text-soft sm:table-cell">{i + 1}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <TokenIcon symbol={p.sym1} address={p.address} size={28} link />
+                    <span className="font-medium">{p.pair}</span>
+                  </div>
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-emerald-600">{p.apr20.toFixed(1)}%</td>
+                <td className="hidden whitespace-nowrap px-4 py-3 text-right sm:table-cell">
+                  <Chg v={p.changePct} />
+                </td>
+                <td className="hidden px-4 py-3 text-right md:table-cell">{kfmt(p.volEth ?? 0)}</td>
+                <td className="hidden px-4 py-3 text-right lg:table-cell">{p.swapsPerH.toFixed(0)}</td>
+                <td className="hidden px-4 py-3 md:table-cell">
+                  <div className="flex justify-end">
+                    <MiniLine values={p.spark} up={(p.changePct ?? 0) >= 0} />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      {rows.length === 0 && <p className="py-8 text-center text-sm text-soft">No pools match “{q}”.</p>}
     </div>
   );
 }

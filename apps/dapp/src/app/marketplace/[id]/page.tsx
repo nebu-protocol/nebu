@@ -50,7 +50,8 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
         </Link>
 
         <div className="mt-4 flex items-start gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-shade text-4xl">{agent.emoji}</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={agent.image} alt={agent.name} className="h-16 w-16 rounded-2xl object-cover" />
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-semibold tracking-tight">{agent.name}</h1>

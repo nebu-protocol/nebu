@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { AgentCard, type CardMetric } from "@/components/agent-card";
-import { Concierge } from "@/components/concierge";
 import { Header } from "@/components/layout/header";
 import { PoolsExplorer } from "@/components/pools-explorer";
 import { AGENTS, type AgentMeta } from "@/lib/agents";
@@ -36,25 +35,8 @@ export default async function MarketplacePage() {
     <>
       <Header />
       <main className="mx-auto max-w-6xl px-4 py-8">
-        {/* Hero hook */}
-        <div className="mb-5">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-line/60 bg-shade px-3 py-1 text-xs font-medium text-soft">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> BNB Agent Studio
-          </span>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-            {t("Hire smart money.")}{" "}
-            <span className="bg-gradient-to-r from-violet-500 to-fuchsia-500 bg-clip-text text-transparent">{t("Keep your keys.")}</span>
-          </h1>
-          <p className="mt-2 max-w-2xl text-soft">
-            {t("The onchain agent labor market on BNB. Put a proven agent to work in a vault it can't withdraw from — and pay only when it performs.")}
-          </p>
-        </div>
-
-        {/* Concierge — natural-language front door */}
-        <Concierge />
-
         {/* Featured agents */}
-        <section className="mt-6 rounded-2xl border border-line/60 bg-shade/30 p-4 sm:p-5">
+        <section className="rounded-2xl border border-line/60 bg-shade/30 p-4 sm:p-5">
           <div className="mb-4 flex flex-wrap items-baseline gap-2">
             <h2 className="text-lg font-semibold">✦ {t("Agents")}</h2>
             <span className="rounded-full bg-white px-2 py-0.5 text-xs text-soft ring-1 ring-line/60">{AGENTS.length}</span>

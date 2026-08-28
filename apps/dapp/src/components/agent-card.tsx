@@ -23,7 +23,8 @@ export function AgentCard({ agent, metrics }: { agent: AgentMeta; metrics: CardM
       className="group flex flex-col rounded-2xl border border-line/60 bg-white p-5 transition hover:-translate-y-0.5 hover:border-line hover:shadow-lg"
     >
       <div className="mb-3 flex items-start justify-between">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-shade text-2xl">{agent.emoji}</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={agent.image} alt={agent.name} className="h-11 w-11 rounded-xl object-cover" />
         <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${STATUS_STYLE[agent.status]}`}>
           {agent.status === "live" && <span className="mr-1 inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500 align-middle" />}
           {STATUS_LABEL[agent.status]}
