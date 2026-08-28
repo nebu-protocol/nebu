@@ -32,21 +32,7 @@ export async function WelcomeCard() {
   const siwe = await getSiweAddress();
   const ethUsd = getLpStats().ethUsd;
 
-  if (!siwe) {
-    return (
-      <div className="rounded-2xl border border-line/60 p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-medium">{t("Portfolio kamu")}</h2>
-          <Link href="/portfolio" className="text-sm text-soft hover:text-ink">
-            {t("Connect wallet")} →
-          </Link>
-        </div>
-        <div className="mt-4 text-sm text-soft">{t("Total Portfolio Value")}</div>
-        <BigUsd n={null} />
-        <p className="mt-1 text-xs text-soft">{t("Connect wallet di Portfolio untuk melihat nilai posisimu.")}</p>
-      </div>
-    );
-  }
+  if (!siwe) return null; // belum connect → sembunyikan kartu portfolio (bukan tampil state kosong)
 
   const owned = await getOwnedWallet();
   const agent = owned?.address ?? null;

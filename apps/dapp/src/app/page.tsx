@@ -8,6 +8,7 @@ import { WelcomeCard } from "@/components/welcome-card";
 import { NATIVE } from "@/lib/chain";
 import { getT } from "@/lib/i18n-server";
 import { getPoolsTable } from "@/lib/lpdata";
+import { getSiweAddress } from "@/server/siwe";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 export const dynamic = "force-dynamic";
@@ -26,16 +27,19 @@ const chg = (n: number | null) =>
 
 export default async function Page() {
   const t = await getT();
+  const siwe = await getSiweAddress();
   const pools = getPoolsTable(30);
 
   return (
     <>
       <Header />
       <main className="mx-auto max-w-6xl px-4 py-8">
-        {/* portfolio card (ala Ondo) */}
-        <section className="mb-8">
-          <WelcomeCard />
-        </section>
+        {/* portfolio card — hanya tampil kalau wallet sudah connect (SIWE) */}
+        {siwe && (
+          <section className="mb-8">
+            <WelcomeCard />
+          </section>
+        )}
 
         {/* top pools cards (ala Ondo asset cards) */}
         {pools.length > 0 && (
