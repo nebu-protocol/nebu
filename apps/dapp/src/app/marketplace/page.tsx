@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 
 import { AgentCard, type CardMetric } from "@/components/agent-card";
+import { Concierge } from "@/components/concierge";
 import { Header } from "@/components/layout/header";
-import { AGENTS, byCategory, CATEGORIES, type AgentMeta } from "@/lib/agents";
+import { PoolsExplorer } from "@/components/pools-explorer";
+import { AGENTS, type AgentMeta } from "@/lib/agents";
 import { getT } from "@/lib/i18n-server";
-import { getEstApr, getLeaderboard, getTopPools } from "@/lib/lpdata";
+import { getEstApr, getLeaderboard, getPoolsTable, getTopPools } from "@/lib/lpdata";
 
 export const metadata: Metadata = { title: "Agent Marketplace" };
 export const dynamic = "force-dynamic";
@@ -21,72 +23,57 @@ function metricsFor(agent: AgentMeta, live: { apr: number | null; net: number | 
   return [{ label: "Track record", value: agent.status === "beta" ? "Building — onchain soon" : "Coming soon" }];
 }
 
-const PILLS = [
-  { emoji: "🔍", text: "Verify the on-chain track record" },
-  { emoji: "🔒", text: "Non-custodial — hire, never your keys" },
-  { emoji: "📈", text: "Pay for performance" },
-];
-
 export default async function MarketplacePage() {
   const t = await getT();
 
-  // Live data flagship (aman kalau DB kosong → null/0).
   const apr = getEstApr(3);
   const board = getLeaderboard();
   const net = board.length ? board.reduce((s, r) => s + r.avgNet, 0) / board.length : null;
-  const pools = getTopPools(8).length;
-  const live = { apr, net, pools };
+  const pools = getPoolsTable(30);
+  const live = { apr, net, pools: getTopPools(30).length };
 
   return (
     <>
       <Header />
-      <main className="mx-auto max-w-6xl px-4 py-10">
-        {/* Hero */}
-        <section className="mb-12 max-w-3xl">
+      <main className="mx-auto max-w-6xl px-4 py-8">
+        {/* Hero hook */}
+        <div className="mb-5">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-line/60 bg-shade px-3 py-1 text-xs font-medium text-soft">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> BNB Agent Studio
           </span>
-          <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">
-            {t("Hire proven onchain agents.")} <span className="text-soft">{t("Non-custodial.")}</span>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+            {t("Hire smart money.")}{" "}
+            <span className="bg-gradient-to-r from-violet-500 to-fuchsia-500 bg-clip-text text-transparent">{t("Keep your keys.")}</span>
           </h1>
-          <p className="mt-3 text-base text-soft">
-            {t(
-              "Nebu is a labor market for onchain AI agents. Verify what they actually did on-chain, put them to work in a vault they can't withdraw from, and pay only when they perform.",
-            )}
+          <p className="mt-2 max-w-2xl text-soft">
+            {t("The onchain agent labor market on BNB. Put a proven agent to work in a vault it can't withdraw from — and pay only when it performs.")}
           </p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {PILLS.map((p) => (
-              <span key={p.text} className="inline-flex items-center gap-2 rounded-full border border-line/60 px-3 py-1.5 text-sm text-ink">
-                <span>{p.emoji}</span> {t(p.text)}
-              </span>
+        </div>
+
+        {/* Concierge — natural-language front door */}
+        <Concierge />
+
+        {/* Featured agents */}
+        <section className="mt-6 rounded-2xl border border-line/60 bg-shade/30 p-4 sm:p-5">
+          <div className="mb-4 flex flex-wrap items-baseline gap-2">
+            <h2 className="text-lg font-semibold">✦ {t("Agents")}</h2>
+            <span className="rounded-full bg-white px-2 py-0.5 text-xs text-soft ring-1 ring-line/60">{AGENTS.length}</span>
+            <p className="text-sm text-soft">{t("Non-custodial · hire and revoke anytime")}</p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {AGENTS.map((a) => (
+              <AgentCard key={a.id} agent={a} metrics={metricsFor(a, live)} />
             ))}
           </div>
         </section>
 
-        {/* Browse by category — the judged journey: land → find by category → understand → hire */}
-        {CATEGORIES.map((cat) => {
-          const agents = byCategory(cat.key);
-          if (agents.length === 0) return null;
-          return (
-            <section key={cat.key} className="mb-10">
-              <div className="mb-4 flex items-baseline gap-3">
-                <h2 className="flex items-center gap-2 text-lg font-semibold">
-                  <span>{cat.emoji}</span> {t(cat.label)}
-                </h2>
-                <p className="text-sm text-soft">{t(cat.blurb)}</p>
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {agents.map((a) => (
-                  <AgentCard key={a.id} agent={a} metrics={metricsFor(a, live)} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        {/* Opportunities — dense grid of real BNB pools */}
+        <section className="mt-8">
+          <PoolsExplorer pools={pools} />
+        </section>
 
-        <p className="mt-4 text-xs text-faint">
-          {t("All agents run on BNB Smart Chain. Live performance is read on-chain and reconciles with public explorers.")} · {AGENTS.length}{" "}
-          {t("agents")} · {CATEGORIES.length} {t("categories")}
+        <p className="mt-6 text-xs text-faint">
+          {t("All pairs are real BNB Chain pools. Agents run on BSC; live performance is read on-chain and reconciles with explorers.")}
         </p>
       </main>
     </>
