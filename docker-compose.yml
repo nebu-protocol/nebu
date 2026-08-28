@@ -12,7 +12,7 @@ services:
   web:
     build: .
     working_dir: /app/apps/backoffice
-    command: ["/app/node_modules/next/dist/bin/next", "start", "-p", "3015"]
+    command: ["node_modules/.bin/next", "start", "-p", "3015"]
     restart: unless-stopped
     environment: *lp-env
     ports:
@@ -20,7 +20,7 @@ services:
   dapp:
     build: .
     working_dir: /app/apps/dapp
-    command: ["/app/node_modules/next/dist/bin/next", "start", "-p", "3016"]
+    command: ["node_modules/.bin/next", "start", "-p", "3016"]
     restart: unless-stopped
     environment: *lp-env
     ports:

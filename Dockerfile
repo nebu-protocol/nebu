@@ -1,8 +1,11 @@
 FROM node:22-slim
 WORKDIR /app
 COPY . .
+# root: workspace apps/bot + packages (tsx untuk collector)
 RUN npm ci
-RUN npm run build -w studio-admin && npm run build -w @lp/dapp
+# backoffice & dapp: project npm mandiri dengan lockfile sendiri
+RUN cd apps/backoffice && npm ci && npm run build
+RUN cd apps/dapp && npm ci && npm run build
 ENV NODE_ENV=production
 # command per service di docker-compose.yml
-CMD ["node_modules/next/dist/bin/next", "start", "-p", "3015"]
+CMD ["node", "--version"]
