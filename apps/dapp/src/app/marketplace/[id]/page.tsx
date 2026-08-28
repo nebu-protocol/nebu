@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 
 import { HirePanel } from "@/components/hire-panel";
 import { Header } from "@/components/layout/header";
+import { OppTable } from "@/components/opp-table";
 import { type AgentCategory, getAgent, STATUS_LABEL } from "@/lib/agents";
 import { getT } from "@/lib/i18n-server";
-import { getEstApr, getLeaderboard, getTopPools } from "@/lib/lpdata";
+import { getAgentActivity, getEstApr, getLeaderboard, getPoolsTable, getTopPools } from "@/lib/lpdata";
+import { buildOpportunities } from "@/lib/opportunities";
 import { getActiveHire } from "@/server/hire-actions";
 import { getSiweAddress } from "@/server/siwe";
 
@@ -61,6 +63,16 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
     health: [["Protects", "Venus loans"], ["Trigger", "Below your HF"], ["Watch", "24/7"], ["Chain", "BNB Smart Chain"]],
   };
   const stats = STATS[agent.category];
+
+  const opp = buildOpportunities(agent.category, agent.category === "rebalancing" || agent.category === "grid" ? getPoolsTable(12) : []);
+  const activity = getAgentActivity(agent.id);
+  const ago = (ts: number) => {
+    const s = Math.max(0, Math.floor(Date.now() / 1000) - ts);
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
+  };
   const details: [string, string][] = [
     ["Agent ID", agent.id],
     ["Category", CAT_LABEL[agent.category]],
@@ -140,6 +152,11 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
               </div>
             </Section>
 
+            <section>
+              <h2 className="mb-3 text-xl font-semibold tracking-tight">{opp.title}</h2>
+              <OppTable opp={opp} />
+            </section>
+
             <Section title={t("What you grant when you hire")}>
               <p className="text-sm text-soft">
                 {t("Hiring grants a scoped, revocable session on your own vault. The agent works — it can never withdraw.")}
@@ -165,9 +182,38 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
             </Section>
 
             <Section title={t("Recent activity")}>
-              <p className="py-8 text-center text-sm text-soft">
-                {t("No activity yet. Activity will appear here as the agent works.")}
-              </p>
+              {activity.length === 0 ? (
+                <p className="py-8 text-center text-sm text-soft">
+                  {t("No activity yet. Activity will appear here as the agent works.")}
+                </p>
+              ) : (
+                <ul className="divide-y divide-line/40">
+                  {activity.map((a, i) => (
+                    <li key={`${a.txHash}-${i}`} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                      <div className="min-w-0">
+                        <span className="mr-2 rounded-md bg-shade px-1.5 py-0.5 text-[11px] font-medium uppercase text-soft ring-1 ring-line/60">
+                          {a.action}
+                        </span>
+                        <span className="text-ink">{a.detail}</span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3 text-xs">
+                        <span className={a.status === "success" ? "text-emerald-600" : "text-red-600"}>{a.status}</span>
+                        <span className="text-faint">{ago(a.ts)}</span>
+                        {a.txHash && (
+                          <a
+                            href={`https://bscscan.com/tx/${a.txHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono text-soft hover:text-ink hover:underline"
+                          >
+                            {a.txHash.slice(0, 8)}…
+                          </a>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Section>
           </div>
         </div>

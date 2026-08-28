@@ -4,10 +4,9 @@ import Link from "next/link";
 import { type CardMetric } from "@/components/agent-card";
 import { AgentsExplorer, type AgentItem } from "@/components/agents-explorer";
 import { Header } from "@/components/layout/header";
-import { PoolsExplorer } from "@/components/pools-explorer";
 import { AGENTS, type AgentMeta } from "@/lib/agents";
 import { getT } from "@/lib/i18n-server";
-import { getEstApr, getLeaderboard, getPoolsTable, getTopPools } from "@/lib/lpdata";
+import { getEstApr, getLeaderboard, getTopPools } from "@/lib/lpdata";
 
 export const metadata: Metadata = { title: "Agent Marketplace" };
 export const dynamic = "force-dynamic";
@@ -49,7 +48,6 @@ export default async function MarketplacePage() {
   const apr = getEstApr(3);
   const board = getLeaderboard();
   const net = board.length ? board.reduce((s, r) => s + r.avgNet, 0) / board.length : null;
-  const pools = getPoolsTable(30);
   const top = getTopPools(30);
   const bestApr = top.length ? Math.max(...top.map((p) => p.apr20)) : null;
   const live: Live = { apr, net, pools: top.length, bestApr };
@@ -94,13 +92,8 @@ export default async function MarketplacePage() {
           <AgentsExplorer items={items} />
         </div>
 
-        {/* Opportunities — real BNB pools table */}
-        <div className="mt-10">
-          <PoolsExplorer pools={pools} />
-        </div>
-
-        <p className="mt-6 text-xs text-faint">
-          {t("All agents run on BNB Smart Chain; pools are real PancakeSwap pairs. Live performance reconciles with explorers.")}
+        <p className="mt-8 text-xs text-faint">
+          {t("All agents run on BNB Smart Chain. Each agent's opportunities and live activity are on its own page.")}
         </p>
       </main>
     </>

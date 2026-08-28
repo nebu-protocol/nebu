@@ -489,6 +489,21 @@ export function getEstApr(topN = 3): number | null {
   }
 }
 
+export type AgentActivity = { ts: number; action: string; detail: string; txHash: string | null; status: string };
+
+/** Aktivitas on-chain agent (tx nyata dari eksekusi). Kosong kalau tabel belum ada. */
+export function getAgentActivity(agentId: string, limit = 20): AgentActivity[] {
+  try {
+    return (
+      getDb()
+        .prepare("SELECT ts, action, detail, tx_hash, status FROM agent_activity WHERE agent_id = ? ORDER BY ts DESC LIMIT ?")
+        .all(agentId, limit) as { ts: number; action: string; detail: string; tx_hash: string | null; status: string }[]
+    ).map((r) => ({ ts: r.ts, action: r.action, detail: r.detail, txHash: r.tx_hash, status: r.status }));
+  } catch {
+    return [];
+  }
+}
+
 export type LeaderRow = {
   owner: string;
   avgNet: number;
