@@ -23,7 +23,7 @@ import { BnbIcon } from "@/components/icons";
 import { ACTIVE_CHAIN, EXPLORER_URL as EXPLORER } from "@/lib/chain";
 
 // Klik token → halaman token PancakeSwap (di BSC); fallback block explorer di chain lain.
-const tokenUrl = (addr: string) =>
+export const tokenUrl = (addr: string) =>
   ACTIVE_CHAIN.kind === "bsc" ? `https://pancakeswap.finance/token/bsc/${addr}` : `${EXPLORER}/token/${addr}`;
 
 export function TokenIcon({

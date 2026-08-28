@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { MiniLine } from "@/components/mini-line";
-import { TokenIcon } from "@/components/token-icon";
+import { TokenIcon, tokenUrl } from "@/components/token-icon";
 import type { PoolRow } from "@/lib/lpdata";
 
 const SORTS = [
@@ -95,10 +95,15 @@ export function PoolsExplorer({ pools }: { pools: PoolRow[] }) {
               <tr key={p.poolId} className="border-t border-line/60 hover:bg-shade/40">
                 <td className="hidden px-4 py-3 text-soft sm:table-cell">{i + 1}</td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <TokenIcon symbol={p.sym1} address={p.address} size={28} link />
-                    <span className="font-medium">{p.pair}</span>
-                  </div>
+                  <a
+                    href={tokenUrl(p.address)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 transition hover:opacity-70"
+                  >
+                    <TokenIcon symbol={p.sym1} address={p.address} size={28} />
+                    <span className="font-medium hover:underline">{p.pair}</span>
+                  </a>
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-right font-medium text-emerald-600">{p.apr20.toFixed(1)}%</td>
                 <td className="hidden whitespace-nowrap px-4 py-3 text-right sm:table-cell">
