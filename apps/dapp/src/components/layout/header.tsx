@@ -13,7 +13,7 @@ export function Header() {
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 font-semibold">
-            <Image src="/lp-logo.png" alt="Nebu" width={24} height={24} className="size-6 rounded-md" />
+            <Image src="/nebu-logo.png" alt="Nebu" width={24} height={24} className="size-6 rounded-md" />
             Nebu
           </Link>
           <NavLinks />
