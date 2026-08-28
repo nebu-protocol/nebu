@@ -4,7 +4,11 @@ import { isEthereumWallet } from "@dynamic-labs/ethereum";
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { useState } from "react";
 
+import { TurnstileWidget } from "@/components/turnstile-widget";
 import { useT } from "@/lib/i18n-client";
+
+// Site key Turnstile (publik). Kosong = widget tak render & server anggap lolos (dev).
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || null;
 
 /**
  * Belum ada sesi SIWE. Connect wallet via Dynamic (banyak wallet + mobile), lalu
@@ -14,6 +18,7 @@ export function PortfolioClient() {
   const { primaryWallet, setShowAuthFlow } = useDynamicContext();
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState("");
   const t = useT();
 
   const signToManage = async () => {
@@ -32,7 +37,7 @@ export function PortfolioClient() {
       const vres = await fetch("/api/siwe/verify", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ address, signature }),
+        body: JSON.stringify({ address, signature, token }),
       });
       if (!vres.ok) {
         setError((await vres.json().catch(() => ({}))).error ?? t("verifikasi gagal"));
@@ -61,14 +66,21 @@ export function PortfolioClient() {
           {t("Connect wallet")}
         </button>
       ) : (
-        <button
-          type="button"
-          onClick={signToManage}
-          disabled={signing}
-          className="mt-4 w-full rounded-lg bg-ink px-4 py-2 font-medium text-white disabled:opacity-60"
-        >
-          {signing ? t("Menandatangani…") : t("Sign to manage")}
-        </button>
+        <>
+          {TURNSTILE_SITE_KEY && (
+            <div className="mt-4 flex justify-center">
+              <TurnstileWidget siteKey={TURNSTILE_SITE_KEY} onToken={setToken} />
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={signToManage}
+            disabled={signing || (!!TURNSTILE_SITE_KEY && !token)}
+            className="mt-4 w-full rounded-lg bg-ink px-4 py-2 font-medium text-white disabled:opacity-60"
+          >
+            {signing ? t("Menandatangani…") : t("Sign to manage")}
+          </button>
+        </>
       )}
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
     </div>

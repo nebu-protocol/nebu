@@ -1,18 +1,20 @@
 const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
-/** Site key (publik, aman dikirim ke client). Kosong = Turnstile nonaktif. */
+/** Site key (publik). Client baca NEXT_PUBLIC_TURNSTILE_SITE_KEY langsung; ini utk server. */
 export function turnstileSiteKey(): string | null {
-  return process.env.TURNSTILE_SITE_KEY || null;
+  return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || null;
 }
 
 /**
  * Verifikasi token Turnstile ke Cloudflare (server-side, pakai SECRET_KEY).
- * Kalau SECRET_KEY tidak di-set → dianggap lolos (mis. dev lokal).
- * Kalau di-set tapi token kosong/invalid → gagal.
+ * Enforce HANYA kalau FULLY dikonfigurasi — SECRET_KEY *dan* NEXT_PUBLIC_TURNSTILE_SITE_KEY
+ * (kalau site key kosong widget tak render → tak ada token → jangan kunci login). Salah satu
+ * kosong → dianggap lolos (dev / belum diaktifkan). Fully-set tapi token invalid → gagal.
  */
 export async function verifyTurnstile(token: string, ip?: string): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
-  if (!secret) return true; // Turnstile nonaktif
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  if (!secret || !siteKey) return true; // belum fully-configured → no-op (jangan kunci login)
   if (!token) return false;
   try {
     const body = new URLSearchParams({ secret, response: token });

@@ -19,6 +19,7 @@ function hash(s: string): number {
  * (/api/token-logo, "selalu cek" tiap token pools dari Blockscout/DexScreener). Tak
  * pernah ada gambar rusak/blank — kalau semua gagal, avatar dasar yang tampil.
  */
+import { BnbIcon } from "@/components/icons";
 import { EXPLORER_URL as EXPLORER } from "@/lib/chain";
 
 export function TokenIcon({
@@ -42,6 +43,9 @@ export function TokenIcon({
   ].filter(Boolean) as string[];
   const [idx, setIdx] = useState(0);
   const src = candidates[idx];
+
+  // Native BNB: mark resmi Binance (bukan avatar generatif "B"). Setelah semua hook.
+  if (s === "bnb" || s === "wbnb") return <BnbIcon size={size} />;
 
   const h = hash(s || addr || "?");
   const hue = h % 360;

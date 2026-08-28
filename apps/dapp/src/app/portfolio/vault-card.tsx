@@ -97,6 +97,10 @@ export function VaultCard({
   const deposit = async () => {
     if (!vaultAddress || Number(depEth) <= 0) return;
     if (!primaryWallet || !isEthereumWallet(primaryWallet)) return setMsg(t("Wallet tidak terhubung."));
+    // Deposit dari wallet OWNER — vault withdraw owner-only, jadi cegah setor dari wallet lain
+    // (dananya bakal cuma bisa ditarik owner, bukan si penyetor).
+    if (primaryWallet.address.toLowerCase() !== owner.toLowerCase())
+      return setMsg(t("Connect wallet owner-mu dulu."));
     setBusy(true);
     setMsg(null);
     try {
