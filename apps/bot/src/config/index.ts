@@ -35,7 +35,7 @@ export type Addresses = {
 
 /** Permit2 kanonik (sama di semua chain EVM). */
 const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as const
-const ZERO = '0x0000000000000000000000000000000000000000' as const
+export const ZERO = '0x0000000000000000000000000000000000000000' as const
 
 // --- Robinhood Chain (Uniswap v4) — profil default, TIDAK diubah ---
 export const RPC_URL =
