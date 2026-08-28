@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { GeneratedAvatar } from "@/components/generated-avatar";
+import { BnbIcon } from "@/components/icons";
 import { useT } from "@/lib/i18n-client";
 import { signOutAction } from "@/server/wallet-actions";
 
@@ -97,9 +98,8 @@ export function WalletButton() {
               <div className="min-w-0">
                 <div className="truncate font-mono text-base font-semibold">{short(addr)}</div>
                 <div className="flex items-center gap-1.5 text-xs text-soft">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/robinhood-chain.png" alt="" className="h-3.5 w-3.5 rounded-full" />
-                  {t("Robinhood Chain")}
+                  <BnbIcon size={14} />
+                  BNB Smart Chain
                 </div>
               </div>
             </div>

@@ -24,7 +24,7 @@ export async function Footer() {
         <div className="mt-8 text-[11px] leading-relaxed text-faint">
           <p className="mb-3 max-w-3xl">
             {t(
-              "LP Bot menyediakan automated liquidity provision di Uniswap v4 (Robinhood Chain). Semua angka APR/PnL bersifat gross (pre-IL), berbasis simulasi, dan bukan jaminan hasil. Menyediakan likuiditas pada pool volatil (mis. memecoin) berisiko tinggi termasuk impermanent loss dan kehilangan sebagian/seluruh modal. Tidak ada di halaman ini yang merupakan nasihat investasi, hukum, pajak, atau finansial.",
+              "LP Bot menyediakan automated liquidity provision di PancakeSwap Infinity (BNB Smart Chain). Semua angka APR/PnL bersifat gross (pre-IL), berbasis simulasi, dan bukan jaminan hasil. Menyediakan likuiditas pada pool volatil (mis. memecoin) berisiko tinggi termasuk impermanent loss dan kehilangan sebagian/seluruh modal. Tidak ada di halaman ini yang merupakan nasihat investasi, hukum, pajak, atau finansial.",
             )}
           </p>
         </div>

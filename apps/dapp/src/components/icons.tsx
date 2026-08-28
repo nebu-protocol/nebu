@@ -6,6 +6,19 @@ import { markFor } from "@/lib/identity";
 
 type IconProps = Readonly<SVGProps<SVGSVGElement> & { size?: number }>;
 
+/** Logo BNB Chain: koin emas Binance + mark resmi (2 chevron + 3 berlian). Vektor, tanpa aset biner. */
+export function BnbIcon({ size = 18, ...props }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" {...props}>
+      <circle cx="12" cy="12" r="12" fill="#F0B90B" />
+      {/* mark resmi Binance (0..24), diperkecil 0.62 & dipusatkan agar ada padding spt logo asli */}
+      <g transform="translate(12 12) scale(0.62) translate(-12 -12)" fill="#181A1E">
+        <path d="M16.624 13.9202l2.7175 2.7154-7.353 7.353-7.353-7.352 2.7175-2.7164 4.6355 4.6595 4.6356-4.6595zm4.6366-4.6366L24 12l-2.7218 2.7218-2.7218-2.7218 2.7218-2.7218zM12 4.6335l4.6356 4.6595L13.9209 12 12 10.0791 10.0791 12 7.3644 9.293 12 4.6335zM2.7218 9.2782L5.4436 12l-2.7218 2.7218L0 12l2.7218-2.7218zM12 0l7.353 7.353-2.7175 2.7164L12 5.4386 7.3644 10.0332 4.6469 7.3168 12 0z" />
+      </g>
+    </svg>
+  );
+}
+
 export function UsdcIcon({ size = 20, ...props }: IconProps) {
   return (
     <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden="true" {...props}>

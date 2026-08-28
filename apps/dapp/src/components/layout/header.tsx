@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { BnbIcon } from "@/components/icons";
 import { LanguageToggle } from "./language-toggle";
 import { MobileNav, NavLinks } from "./nav-links";
 import { WalletButton } from "./wallet-button";
@@ -19,10 +20,10 @@ export function Header() {
         <div className="flex items-center gap-2">
           <LanguageToggle />
           <span
-            title="Robinhood Chain"
+            title="BNB Smart Chain"
             className="hidden h-8 w-8 items-center justify-center rounded-lg border border-line/60 sm:flex"
           >
-            <Image src="/robinhood-chain.png" alt="Robinhood Chain" width={18} height={18} className="rounded-full" />
+            <BnbIcon size={18} />
           </span>
           <WalletButton />
           <MobileNav />
