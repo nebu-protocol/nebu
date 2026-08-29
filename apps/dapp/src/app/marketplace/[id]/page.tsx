@@ -86,7 +86,7 @@ export default async function AgentDetailPage({ params }: { params: Promise<{ id
     <>
       <Header />
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <Link href="/marketplace" className="inline-flex items-center gap-1 text-sm text-soft hover:text-ink">
+        <Link href="/" className="inline-flex items-center gap-1 text-sm text-soft hover:text-ink">
           ← {t("Agents")}
         </Link>
 

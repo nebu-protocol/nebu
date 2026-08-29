@@ -1,131 +1,94 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
+import { type CardMetric } from "@/components/agent-card";
+import { AgentsExplorer, type AgentItem } from "@/components/agents-explorer";
 import { Header } from "@/components/layout/header";
-import { MiniLine } from "@/components/mini-line";
-import { Sparkline } from "@/components/sparkline";
-import { TokenIcon } from "@/components/token-icon";
 import { WelcomeCard } from "@/components/welcome-card";
-import { NATIVE } from "@/lib/chain";
+import { AGENTS, type AgentMeta } from "@/lib/agents";
 import { getT } from "@/lib/i18n-server";
-import { getPoolsTable } from "@/lib/lpdata";
+import { getEstApr, getLeaderboard, getTopPools } from "@/lib/lpdata";
 import { getSiweAddress } from "@/server/siwe";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 export const dynamic = "force-dynamic";
 
-const fmtUsd = (n: number | null) =>
-  n === null ? "—" : n >= 1 ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : `$${n.toFixed(2)}`;
-// Persen: separator ribuan + maks 2 desimal.
-const fmtPct = (n: number, dp = 2) =>
-  n.toLocaleString(undefined, { maximumFractionDigits: dp });
-// APR bisa astronomis di pool fee-tinggi (mis. four.meme ~95% fee → feeGrowth ekstrem) —
-// cap tampilan biar kredibel: di atas 9.999% ditampilkan "9,999%+".
-const fmtApr = (n: number) => (n >= 9999 ? "9,999%+" : `${fmtPct(n, 0)}%`);
-const chg = (n: number | null) =>
-  n === null ? <span className="text-soft">—</span> : (
-    <span className={n >= 0 ? "text-emerald-600" : "text-red-600"}>
-      {n >= 0 ? "▲" : "▼"} {fmtPct(Math.abs(n))}%
-    </span>
-  );
+type Live = { apr: number | null; net: number | null; pools: number; bestApr: number | null };
+
+function metricsFor(agent: AgentMeta, live: Live): CardMetric[] {
+  const pct = (n: number | null) => (n != null ? `${n.toFixed(1)}%` : "—");
+  switch (agent.category) {
+    case "rebalancing":
+      return [
+        { label: "Est. APR", value: pct(live.apr), good: true },
+        { label: "Net vs HODL", value: live.net != null ? `${live.net >= 0 ? "+" : ""}${live.net.toFixed(2)}%` : "—", good: (live.net ?? 0) >= 0 },
+        { label: "Pools", value: String(live.pools) },
+      ];
+    case "yield":
+      return [
+        { label: "Best APR", value: pct(live.bestApr), good: true },
+        { label: "Auto-compound", value: "Daily" },
+        { label: "Venues", value: String(live.pools) },
+      ];
+    case "grid":
+      return [
+        { label: "Markets", value: String(live.pools) },
+        { label: "Strategy", value: "Buy-low / sell-high" },
+      ];
+    case "health":
+      return [
+        { label: "Protects", value: "Venus loans" },
+        { label: "Watch", value: "24/7" },
+      ];
+  }
+}
 
 export default async function Page() {
   const t = await getT();
   const siwe = await getSiweAddress();
-  const pools = getPoolsTable(30);
+
+  const apr = getEstApr(3);
+  const board = getLeaderboard();
+  const net = board.length ? board.reduce((s, r) => s + r.avgNet, 0) / board.length : null;
+  const top = getTopPools(30);
+  const bestApr = top.length ? Math.max(...top.map((p) => p.apr20)) : null;
+  const live: Live = { apr, net, pools: top.length, bestApr };
+  const items: AgentItem[] = AGENTS.map((a) => ({ agent: a, metrics: metricsFor(a, live) }));
 
   return (
     <>
       <Header />
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        {/* portfolio card — hanya tampil kalau wallet sudah connect (SIWE) */}
-        {siwe && (
+      <main className="mx-auto max-w-6xl px-4 py-6">
+        {siwe ? (
+          // Connected → portfolio card di paling atas.
           <section className="mb-8">
             <WelcomeCard />
           </section>
-        )}
-
-        {/* top pools cards (ala Ondo asset cards) */}
-        {pools.length > 0 && (
-          <section className="mb-8">
-            <h2 className="mb-3 text-lg font-medium">{t("Top pools")}</h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {pools.slice(0, 4).map((p) => (
-                <div key={p.poolId} className="overflow-hidden rounded-2xl border border-line/60 p-4">
-                  <div className="flex items-center gap-2">
-                    <TokenIcon symbol={p.sym1} address={p.address} size={32} link />
-                    <div className="min-w-0">
-                      <div className="truncate font-medium">{p.sym1}</div>
-                      <div className="text-xs text-soft">/ {NATIVE}</div>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-baseline gap-1.5">
-                    <span className="text-2xl font-semibold tracking-tight">{fmtApr(p.apr20)}</span>
-                    <span className="text-xs text-soft">{t("APR")}</span>
-                  </div>
-                  <div className="text-xs">{chg(p.changePct)}</div>
-                  <div className="mt-3 h-14">
-                    <Sparkline values={p.spark} trend={(p.changePct ?? 0) >= 0 ? "up" : "down"} animate={false} />
-                  </div>
-                </div>
-              ))}
+        ) : (
+          // Belum connect → hero pitch.
+          <section className="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-indigo-700 to-slate-900 px-6 py-14 text-center text-white sm:py-20">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-40"
+              style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.18) 1px, transparent 0)", backgroundSize: "26px 26px" }}
+            />
+            <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-fuchsia-500/30 blur-3xl" />
+            <div className="relative">
+              <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">{t("Hire onchain agents")}</h1>
+              <p className="mx-auto mt-4 max-w-xl text-white/80">
+                {t("Put your capital to work in a vault they can't withdraw from — pay only when they perform.")}
+              </p>
+              <Link
+                href="/portfolio"
+                className="mt-7 inline-block rounded-full bg-white px-6 py-3 text-sm font-semibold text-ink transition hover:opacity-90"
+              >
+                {t("Connect wallet")}
+              </Link>
             </div>
           </section>
         )}
 
-        {/* pools table */}
-        <section>
-          <h2 className="mb-3 text-lg font-medium">{t("Pools")}</h2>
-          <div className="overflow-x-auto rounded-2xl border border-line/60">
-            <table className="w-full text-sm">
-              <thead className="border-line/60 border-b text-soft">
-                <tr>
-                  <th className="hidden px-4 py-3 text-left font-medium sm:table-cell">#</th>
-                  <th className="px-4 py-3 text-left font-medium">{t("Pool")}</th>
-                  <th className="px-4 py-3 text-right font-medium">{t("APR ±20%")}</th>
-                  <th className="hidden px-4 py-3 text-right font-medium sm:table-cell">{t("Δ recent")}</th>
-                  <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">Fee/{NATIVE}/d</th>
-                  <th className="hidden px-4 py-3 text-right font-medium md:table-cell">Vol ({NATIVE})</th>
-                  <th className="hidden px-4 py-3 text-right font-medium lg:table-cell">{t("Swaps/h")}</th>
-                  <th className="hidden px-4 py-3 text-right font-medium md:table-cell">{t("Trend")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pools.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-soft">
-                      {t("Belum ada data — collector sedang mengumpulkan.")}
-                    </td>
-                  </tr>
-                )}
-                {pools.map((p, i) => (
-                  <tr key={p.poolId} className="border-line/60 border-t">
-                    <td className="hidden px-4 py-3 text-soft sm:table-cell">{i + 1}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <TokenIcon symbol={p.sym1} address={p.address} size={28} link />
-                        <span className="font-medium">{p.sym1}</span>
-                        <span className="text-xs text-soft">/ {NATIVE}</span>
-                      </div>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-right font-medium">{fmtApr(p.apr20)}</td>
-                    <td className="hidden whitespace-nowrap px-4 py-3 text-right sm:table-cell">{chg(p.changePct)}</td>
-                    <td className="hidden px-4 py-3 text-right lg:table-cell">{p.feePerEthDay.toFixed(5)}</td>
-                    <td className="hidden px-4 py-3 text-right md:table-cell">{p.volEth?.toFixed(1) ?? "—"}</td>
-                    <td className="hidden px-4 py-3 text-right lg:table-cell">{p.swapsPerH.toFixed(0)}</td>
-                    <td className="hidden px-4 py-3 md:table-cell">
-                      <div className="flex justify-end">
-                        <MiniLine values={p.spark} up={(p.changePct ?? 0) >= 0} />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-2 text-xs text-soft">
-            {t("APR gross (pre-IL). Δ dari time-series harga on-chain. Bukan nasihat finansial.")}
-          </p>
-        </section>
+        {/* List market agent */}
+        <AgentsExplorer items={items} />
       </main>
     </>
   );

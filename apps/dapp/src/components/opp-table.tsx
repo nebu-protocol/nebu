@@ -24,7 +24,7 @@ export function OppTable({ opp }: { opp: Opp }) {
                 if (j === 0) {
                   const inner = (
                     <span className="inline-flex items-center gap-2">
-                      {r.addr && <TokenIcon symbol={(cell.split("/")[0] ?? "?").split(" ").pop() ?? "?"} address={r.addr} size={22} />}
+                      {r.addr && <TokenIcon symbol={r.sym ?? (cell.split("/")[0] ?? "?")} address={r.addr} size={22} />}
                       <span className="font-medium">{cell}</span>
                     </span>
                   );

@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "../../lib/i18n-client";
 
 const NAV = [
-  { href: "/marketplace", label: "Marketplace" },
+  { href: "/", label: "Agents" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/status", label: "Status" },
